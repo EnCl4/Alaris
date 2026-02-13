@@ -1,0 +1,6 @@
+../Core/Src/freertos.c:59:5:_write	1
+../Core/Src/freertos.c:116:6:MX_FREERTOS_Init	1
+../Core/Src/freertos.c:174:6:StartICm20948_Accel	1
+../Core/Src/freertos.c:193:6:StartICM20948_Gyro	1
+../Core/Src/freertos.c:211:6:BMP280_Temp_Press_Alt	1
+../Core/Src/freertos.c:229:6:SD_dataProcess	1

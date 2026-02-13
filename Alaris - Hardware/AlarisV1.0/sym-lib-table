@@ -1,0 +1,9 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "BNO055")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/BNO055.kicad_sym")(options "")(descr ""))
+  (lib (name "BMP390L")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/BMP390L.kicad_sym")(options "")(descr ""))
+  (lib (name "MSD-1-A")(type "KiCad")(uri "C:/GitHub/Ignis/Ignis - Hardware/V1.2/IgnisLibrarys/Symbols/MSD-1-A.kicad_sym")(options "")(descr ""))
+  (lib (name "SensoresMeus")(type "KiCad")(uri "${KIPRJMOD}/SensoresMeus.kicad_sym")(options "")(descr ""))
+  (lib (name "MTSW-101-X-X-D-X")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/MTSW-101-X-X-D-X.kicad_sym")(options "")(descr ""))
+  (lib (name "636101111001")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/636101111001.kicad_sym")(options "")(descr ""))
+)
