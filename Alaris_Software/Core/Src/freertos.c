@@ -553,29 +553,29 @@ uint16_t readValue[2];
 osThreadId_t ICM20948_AccelHandle;
 const osThreadAttr_t ICM20948_Accel_attributes = {
   .name = "ICM20948_Accel",
-  .stack_size = 128 * 8,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for ICM20948_Gyro */
 osThreadId_t ICM20948_GyroHandle;
 const osThreadAttr_t ICM20948_Gyro_attributes = {
   .name = "ICM20948_Gyro",
-  .stack_size = 128 * 8,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for BMP280_Temp_Pre */
 osThreadId_t BMP280_Temp_PreHandle;
 const osThreadAttr_t BMP280_Temp_Pre_attributes = {
   .name = "BMP280_Temp_Pre",
-  .stack_size = 128 * 8,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal1,
 };
 /* Definitions for SD_data */
 osThreadId_t SD_dataHandle;
 const osThreadAttr_t SD_data_attributes = {
   .name = "SD_data",
-  .stack_size = 128 * 32,
-  .priority = (osPriority_t) osPriorityHigh6,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh7,
 };
 /* Definitions for pitotAnalog */
 osThreadId_t pitotAnalogHandle;
@@ -595,14 +595,14 @@ const osThreadAttr_t aoaAnalog_attributes = {
 osThreadId_t GPSdataGetHandle;
 const osThreadAttr_t GPSdataGet_attributes = {
   .name = "GPSdataGet",
-  .stack_size = 128 * 32,
-  .priority = (osPriority_t) osPriorityHigh7,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GPSdataPlot */
 osThreadId_t GPSdataPlotHandle;
 const osThreadAttr_t GPSdataPlot_attributes = {
   .name = "GPSdataPlot",
-  .stack_size = 128 * 8,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 

@@ -1,4 +1,4 @@
-24746170413580800
+24749713709754681
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -57484,12 +57484,26 @@ Connector
 13
 13
 Footprint
+MTS103
+<b>TOGGLE SWITCH</b><p>distributor RS Components
+
+0
+3
+3
+Footprint
 SAMTEC_MTSW-101-X-X-D-X
 
 
 0
 2
 2
+Footprint
+SOIC127P599X175-8N
+
+
+0
+8
+8
 Footprint
 XDCR_BMP390L
 
