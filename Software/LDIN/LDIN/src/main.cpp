@@ -1,71 +1,93 @@
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
 
-const char* ssid = "SmartHD3";
-const char* password = "Ni01@En03#sM@@!";
+  // WiFi AP SSID
+  #define WIFI_SSID "Bem"
+  // WiFi password
+  #define WIFI_PASSWORD "Ni01@En03#sM@@!"
+  
+  #if defined(ESP32)
+  #include <WiFiMulti.h>
+  WiFiMulti wifiMulti;
+  #define DEVICE "ESP32"
+  #elif defined(ESP8266)
+  #include <ESP8266WiFiMulti.h>
+  ESP8266WiFiMulti wifiMulti;
+  #define DEVICE "ESP8266"
+  #endif
+  
+  #include <InfluxDbClient.h>
+  #include <InfluxDbCloud.h>
+  
+  
+  #define INFLUXDB_URL "http://192.168.7.11:8086"
+  #define INFLUXDB_TOKEN "_gwBDXFODR8fPi2fsMEgwq-kE4ImkpwNY5xTp2jJTUlbHLZzf8qGWPsqF2Jf8QOP_v35PeQP0l5EmDTEE1ulWA=="
+  #define INFLUXDB_ORG "61e96235def605fb"
+  #define INFLUXDB_BUCKET "encl_bucket"
+  
+  // Time zone info
+  #define TZ_INFO "UTC-3"
+  
+  // Declare InfluxDB client instance with preconfigured InfluxCloud certificate
+  InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
+  
+  // Declare Data point
+  Point sensor("wifi_status");
+  
+  void setup() {
+    Serial.begin(115200);
+  
+    // Setup wifi
+    WiFi.mode(WIFI_STA);
+    wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
+  
+    Serial.print("Connecting to wifi");
+    while (wifiMulti.run() != WL_CONNECTED) {
+      Serial.print(".");
+      delay(100);
+    }
+    Serial.println();
+  
+    // Accurate time is necessary for certificate validation and writing in batches
+    // We use the NTP servers in your area as provided by: https://www.pool.ntp.org/zone/
+    // Syncing progress and the time will be printed to Serial.
+    timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
+  
+  
+    // Check server connection
+    if (client.validateConnection()) {
+      Serial.print("Connected to InfluxDB: ");
+      Serial.println(client.getServerUrl());
+    } else {
+      Serial.print("InfluxDB connection failed: ");
+      Serial.println(client.getLastErrorMessage());
+    }
 
-#define LED_PIN 8
-
-WebServer server(80);
-
-bool ledState = false;
-
-void handleRoot() {
-  String html = "<!DOCTYPE html><html>";
-  html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'></head>";
-  html += "<body><h1>ESP32-C3 Web Service</h1>";
-  html += "<p>LED está: ";
-  html += (ledState ? "LIGADO" : "DESLIGADO");
-  html += "</p>";
-  html += "<a href='/led/on'><button>Ligar LED</button></a>";
-  html += "<a href='/led/off'><button>Desligar LED</button></a>";
-  html += "</body></html>";
-
-  server.send(200, "text/html", html);
-}
-
-void handleLedOn() {
-  ledState = true;
-  digitalWrite(LED_PIN, HIGH);
-  server.sendHeader("Location", "/");
-  server.send(303);
-}
-
-void handleLedOff() {
-  ledState = false;
-  digitalWrite(LED_PIN, LOW);
-  server.sendHeader("Location", "/");
-  server.send(303);
-}
-
-void setup() {
-  Serial.begin(115200);
-  delay(3000);
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
-  Serial.println("01");
-  WiFi.begin(ssid, password);
-Serial.println("02");
-  Serial.print("Conectando ao WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+    sensor.addTag("device", DEVICE);
+    sensor.addTag("SSID", WiFi.SSID());
   }
-  Serial.println("Status: " + String(WiFi.status()));
-Serial.println("IP: " + WiFi.localIP().toString());
-Serial.println("RSSI: " + String(WiFi.RSSI()));
-  Serial.println("\nConectado!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-
-  server.on("/", handleRoot);
-  server.on("/led/on", handleLedOn);
-  server.on("/led/off", handleLedOff);
-
-  server.begin();
-}
-
-void loop() {
-  server.handleClient();
-}
+  void loop() {
+    // Clear fields for reusing the point. Tags will remain the same as set above.
+    sensor.clearFields();
+  
+    // Store measured value into point
+    // Report RSSI of currently connected network
+    sensor.addField("rssi", WiFi.RSSI());
+  
+    // Print what are we exactly writing
+    Serial.print("Writing: ");
+    Serial.println(sensor.toLineProtocol());
+  
+    // Check WiFi connection and reconnect if needed
+    if (wifiMulti.run() != WL_CONNECTED) {
+      Serial.println("Wifi connection lost");
+    }
+  
+    // Write point
+    if (!client.writePoint(sensor)) {
+      Serial.print("InfluxDB write failed: ");
+      Serial.println(client.getLastErrorMessage());
+    }
+  
+    Serial.println("Waiting 1 second");
+    delay(100);
+    }

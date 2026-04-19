@@ -1,4 +1,4 @@
-24749713709754681
+24760324989294380
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -57462,6 +57462,13 @@ JMPs
 0
 0
 0
+FootPrintsMeus
+MPS20N0040D
+
+
+0
+6
+6
 Footprint
 636101111001
 
@@ -57470,12 +57477,33 @@ Footprint
 3
 3
 Footprint
+Buzzer5mm
+
+
+0
+3
+3
+Footprint
+Header4x2
+
+
+0
+8
+8
+Footprint
 LGA28R50P4X10_380X520X100
 
 
 0
 28
 28
+Footprint
+MAX4466
+
+
+0
+5
+5
 Footprint
 MSD1A
 MSD-1-A-1
@@ -57491,8 +57519,22 @@ MTS103
 3
 3
 Footprint
+Mic6022
+
+
+0
+2
+2
+Footprint
 SAMTEC_MTSW-101-X-X-D-X
 
+
+0
+2
+2
+Footprint
+SKRK
+<b>SKRK</b><br>
 
 0
 2

@@ -10,4 +10,7 @@
   (lib (name "Switch MTS103")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/MTS103.kicad_sym")(options "")(descr ""))
   (lib (name "MAX4466EXK")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/MAX4466EXK.kicad_sym")(options "")(descr ""))
   (lib (name "Header4x2")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/Header4x2.kicad_sym")(options "")(descr ""))
+  (lib (name "Buzzer5mm")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/Buzzer5mm.kicad_sym")(options "")(descr ""))
+  (lib (name "Mic6022")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/Mic6022.kicad_sym")(options "")(descr ""))
+  (lib (name "Cleber")(type "KiCad")(uri "C:/GitHub/Alaris/Alaris - Hardware/Biblioteca/Simb/SwitchModificado.kicad_sym")(options "")(descr ""))
 )

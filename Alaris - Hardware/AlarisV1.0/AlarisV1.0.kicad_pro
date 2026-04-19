@@ -51,7 +51,13 @@
           "min_clearance": 0.5
         }
       },
-      "diff_pair_dimensions": [],
+      "diff_pair_dimensions": [
+        {
+          "gap": 0.0,
+          "via_gap": 0.0,
+          "width": 0.0
+        }
+      ],
       "drc_exclusions": [],
       "meta": {
         "version": 2
@@ -179,7 +185,9 @@
           "td_width_to_size_filter_ratio": 0.9
         }
       ],
-      "track_widths": [],
+      "track_widths": [
+        0.0
+      ],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
           "corner_radius_percentage": 80,
@@ -206,7 +214,12 @@
           "spacing": 0.6
         }
       },
-      "via_dimensions": [],
+      "via_dimensions": [
+        {
+          "diameter": 0.0,
+          "drill": 0.0
+        }
+      ],
       "zones_allow_external_fillets": false
     },
     "ipc2581": {
@@ -473,14 +486,122 @@
         "via_diameter": 0.6,
         "via_drill": 0.3,
         "wire_width": 6
+      },
+      {
+        "bus_width": 20,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "PowerLine",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 0,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.5,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
       }
     ],
     "meta": {
       "version": 4
     },
-    "net_colors": null,
+    "net_colors": {
+      "+3.3V": "rgb(255, 0, 9)",
+      "+3.3VLN": "rgb(0, 5, 255)",
+      "A_DAil": "rgb(255, 0, 244)",
+      "A_DProf": "rgb(255, 255, 0)",
+      "A_DRud": "rgb(0, 255, 251)",
+      "A_STG": "rgb(0, 255, 16)",
+      "A_mic": "rgb(79, 0, 255)",
+      "A_pitot": "rgb(0, 7, 255)",
+      "BattVA": "rgb(255, 245, 254)",
+      "DN_FDCAN1_RX": "rgb(255, 245, 0)",
+      "DN_FDCAN1_TX": "rgb(255, 248, 0)",
+      "DN_GNC_CS": "rgb(151, 249, 255)",
+      "DN_SPI1_MISO": "rgb(12, 255, 0)",
+      "DN_SPI1_MOSI": "rgb(189, 255, 0)",
+      "DN_SPI1_SCK": "rgb(0, 255, 197)",
+      "DN_SPI2_MISO": "rgb(132, 228, 255)",
+      "DN_SPI2_MOSI": "rgb(96, 255, 249)",
+      "DN_SPI2_SCK": "rgb(133, 234, 255)",
+      "DN_USART3_RX": "rgb(240, 0, 255)",
+      "DN_USART3_TX": "rgb(248, 0, 255)",
+      "DefAil": "rgb(68, 255, 96)",
+      "DefProf": "rgb(120, 255, 253)",
+      "DefRud": "rgb(255, 147, 239)",
+      "GND": "rgb(124, 124, 124)",
+      "GN_BOOT0": "rgb(129, 253, 255)",
+      "GN_L_workingStatus": "rgb(255, 180, 92)",
+      "GN_NRST": "rgb(255, 30, 129)",
+      "GN_PB2": "rgb(161, 74, 255)",
+      "GN_PWM_In1": "rgb(35, 255, 0)",
+      "GN_PWM_In2": "rgb(54, 255, 0)",
+      "GN_PWM_In3": "rgb(19, 255, 0)",
+      "GN_PWM_In4": "rgb(0, 255, 30)",
+      "GN_PWM_In5": "rgb(30, 255, 0)",
+      "GN_PWM_In8": "rgb(14, 255, 0)",
+      "GN_PWM_O_T12_C1": "rgb(0, 11, 255)",
+      "GN_PWM_O_T12_C2": "rgb(3, 0, 255)",
+      "GN_PWM_O_T2_C3": "rgb(3, 0, 255)",
+      "GN_PWM_O_T3_C3": "rgb(1, 2, 255)",
+      "GN_PWM_O_T3_C4": "rgb(0, 4, 255)",
+      "GN_PWM_O_T5_C3": "rgb(0, 3, 255)",
+      "GN_PWM_O_T5_C4": "rgb(0, 11, 255)",
+      "GN_PWM_O_T8_C3": "rgb(0, 5, 255)",
+      "GN_PWM_O_T8_C4": "rgb(9, 0, 255)",
+      "GN_SDA": "rgb(242, 190, 255)",
+      "GN_SLC": "rgb(255, 204, 154)",
+      "GN_SWCLK": "rgb(255, 227, 158)",
+      "LD_BOOT": "rgb(255, 131, 82)",
+      "LD_EN_RST": "rgb(149, 255, 163)",
+      "LD_UART_RX": "rgb(222, 173, 255)",
+      "LD_UART_TX": "rgb(255, 250, 185)",
+      "PWM_in4": "rgb(0, 255, 184)",
+      "Pitot_NO": "rgb(255, 62, 0)",
+      "Pitot_PO": "rgb(255, 161, 110)",
+      "STG1": "rgb(94, 203, 255)"
+    },
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "PowerLine",
+        "pattern": "+3.3V"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "+BATT"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "Vin"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "VBUS"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "+3.3VLN"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "+3.3GPS"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "AVCC"
+      },
+      {
+        "netclass": "PowerLine",
+        "pattern": "HV"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
@@ -503,8 +624,8 @@
     "bom_fmt_settings": {
       "field_delimiter": ",",
       "keep_line_breaks": false,
-      "keep_tabs": false,
-      "name": "CSV",
+      "keep_tabs": true,
+      "name": "---",
       "ref_delimiter": ",",
       "ref_range_delimiter": "",
       "string_delimiter": "\""
@@ -680,6 +801,18 @@
           "label": "#",
           "name": "${ITEM_NUMBER}",
           "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Device",
+          "name": "Sim.Device",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Purchase-URL",
+          "name": "Purchase-URL",
+          "show": false
         }
       ],
       "filter_string": "",
@@ -717,8 +850,16 @@
       "version": 1
     },
     "net_format_name": "",
+    "ngspice": {
+      "fix_include_paths": true,
+      "meta": {
+        "version": 0
+      },
+      "model_mode": 4,
+      "workbook_filename": ""
+    },
     "page_layout_descr_file": "",
-    "plot_directory": "",
+    "plot_directory": "../../../../Users/enzoc/OneDrive/Área de Trabalho/",
     "space_save_all_events": true,
     "spice_current_sheet_as_root": false,
     "spice_external_command": "spice \"%I\"",
@@ -743,10 +884,6 @@
       "DAPN"
     ],
     [
-      "4d039db2-2d2e-4449-b62e-b1faa6c1f6a0",
-      "DAN"
-    ],
-    [
       "dd4ec335-387f-4b8c-b577-1b5dec1b0c44",
       "ADA"
     ],
@@ -761,6 +898,14 @@
     [
       "9c1cbafa-6c39-49b6-aa75-fc148952939d",
       "LDIN"
+    ],
+    [
+      "a353c7cd-5f3c-477d-aa5c-b4545b82e150",
+      "LevelShifter"
+    ],
+    [
+      "bd1281fc-6485-4af7-90dd-4c63fe4170b1",
+      "PWM"
     ]
   ],
   "text_variables": {}

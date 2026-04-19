@@ -65,6 +65,8 @@ void Error_Handler(void);
 #define MS5611_CS_GPIO_Port GPIOE
 #define L_workingStatus_Pin GPIO_PIN_10
 #define L_workingStatus_GPIO_Port GPIOE
+#define Buzzer_Pin GPIO_PIN_8
+#define Buzzer_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
