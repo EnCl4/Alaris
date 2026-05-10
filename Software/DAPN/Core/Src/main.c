@@ -62,6 +62,44 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+extern SPI_HandleTypeDef hspi2;
+
+uint8_t counter = 0;
+
+uint8_t tx_data[8] = {0xA1, 0x01, 0x02, 0x03, 0, 0, 0, 0};
+uint8_t rx_data[8];
+
+void SPI_Master_Exchange(void)
+{
+    uint16_t varA = 1234;   // example data
+    uint16_t varB = 5678;   // example data
+    uint8_t flags = 0x55;   // example
+
+    tx_data[0] = 0xA1;           // header
+    tx_data[1] = counter++;      // increment every transmission
+
+    tx_data[2] = (varA >> 8);    // MSB
+    tx_data[3] = (varA & 0xFF);  // LSB
+
+    tx_data[4] = (varB >> 8);
+    tx_data[5] = (varB & 0xFF);
+
+    tx_data[6] = flags;
+
+    // simple checksum (optional but VERY recommended)
+    tx_data[7] = tx_data[0] ^ tx_data[1] ^ tx_data[2] ^ tx_data[3] ^
+                 tx_data[4] ^ tx_data[5] ^ tx_data[6];
+
+
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_RESET);
+
+    if (HAL_SPI_TransmitReceive(&hspi2, tx_data, rx_data, 8, HAL_MAX_DELAY) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_SET);
+}
 
 /* USER CODE END 0 */
 
@@ -100,17 +138,17 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
-  MX_FDCAN1_Init();
-  MX_SPI1_Init();
+//  MX_USART1_UART_Init();
+//  MX_FDCAN1_Init();
+//  MX_SPI1_Init();
   MX_SPI2_Init();
-  MX_USART2_UART_Init();
-  MX_SDMMC1_SD_Init();
-  MX_FATFS_Init();
-  MX_SPI4_Init();
-  MX_USART3_UART_Init();
-  MX_ADC1_Init();
-  MX_ADC2_Init();
+//  MX_USART2_UART_Init();
+//  MX_SDMMC1_SD_Init();
+//  MX_FATFS_Init();
+//  MX_SPI4_Init();
+//  MX_USART3_UART_Init();
+//  MX_ADC1_Init();
+//  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -123,6 +161,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_3);
+	  SPI_Master_Exchange();
 	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
@@ -143,7 +182,7 @@ void SystemClock_Config(void)
 
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
@@ -154,12 +193,12 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 5;
-  RCC_OscInitStruct.PLL.PLLN = 110;
+  RCC_OscInitStruct.PLL.PLLM = 2;
+  RCC_OscInitStruct.PLL.PLLN = 16;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 20;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 20;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -174,13 +213,13 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -197,8 +236,8 @@ void PeriphCommonClock_Config(void)
   /** Initializes the peripherals clock
   */
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-  PeriphClkInitStruct.PLL2.PLL2M = 32;
-  PeriphClkInitStruct.PLL2.PLL2N = 129;
+  PeriphClkInitStruct.PLL2.PLL2M = 2;
+  PeriphClkInitStruct.PLL2.PLL2N = 16;
   PeriphClkInitStruct.PLL2.PLL2P = 2;
   PeriphClkInitStruct.PLL2.PLL2Q = 2;
   PeriphClkInitStruct.PLL2.PLL2R = 2;
