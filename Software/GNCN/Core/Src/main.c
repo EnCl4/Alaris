@@ -29,6 +29,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,14 +55,15 @@ uint8_t tx_data[8];  // response (optional)
 
 uint8_t counter = 0;
 
-            uint16_t varA = 0;
-            uint16_t varB = 0;
+uint16_t varA = 0;
+uint16_t varB = 0;
 
-            uint8_t flags = 0;
-            uint8_t checksum = 0;
+uint8_t flags = 0;
+uint8_t checksum = 0;
 
-            // ---- 3. Validate checksum ----
-            uint8_t calc = 0;
+// ---- 3. Validate checksum ----
+uint8_t calc = 0;
+bool connected = 0;
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
@@ -86,9 +88,12 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
             calc = rx_data[0] ^ rx_data[1] ^ rx_data[2] ^ rx_data[3] ^
                            rx_data[4] ^ rx_data[5] ^ rx_data[6];
 
-
-        //HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_7);
-
+            if (calc != checksum){
+            	connected = 0;
+            }
+            else{
+            	connected = 1;
+            }
         // ---- 4. Prepare response (optional) ----
         tx_data[0] = 0xB1;  // response header
         tx_data[1] = rx_data[1]; // echo counter (good for sync/debug)
@@ -198,60 +203,7 @@ int main(void)
 //  }
 
 
-//  typedef struct
-//  {
-//      float Kp;
-//      float Ki;
-//      float Kd;
-//
-//      float integrator;
-//      float prev_error;
-//
-//      float output_min;
-//      float output_max;
-//
-//      float dt;   // sampling time (seconds)
-//  } PID_t;
-//
-//  PID_t roll_pid;
-//  PID_t pitch_pid;
-//  PID_t yaw_pid;
-//  PID_t thr_pid;
 
-//
-//  float PID_Update(PID_t *pid, float setpoint, float measurement)
-//  {
-//      float error = setpoint - measurement;
-//
-//      // Proportional
-//      float P = pid->Kp * error;
-//
-//      // Integral (with anti-windup clamp)
-//      pid->integrator += pid->Ki * error * pid->dt;
-//
-//      if(pid->integrator > pid->output_max)
-//          pid->integrator = pid->output_max;
-//      else if(pid->integrator < pid->output_min)
-//          pid->integrator = pid->output_min;
-//
-//      // Derivative (on error)
-//      float derivative = (error - pid->prev_error) / pid->dt;
-//      float D = pid->Kd * derivative;
-//
-//      // Total output
-//      float output = P + pid->integrator + D;
-//
-//      // Output saturation
-//      if(output > pid->output_max)
-//          output = pid->output_max;
-//      else if(output < pid->output_min)
-//          output = pid->output_min;
-//
-//      // Save state
-//      pid->prev_error = error;
-//
-//      return output;
-//  }
 
   /* USER CODE END Init */
 
@@ -296,7 +248,24 @@ int main(void)
   HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);
   HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_2);
 
+  //Inicialzação dos Emissores de PWM para os servos
+
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
 
   //HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
 

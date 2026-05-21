@@ -64,8 +64,8 @@ all: main-build
 main-build: GNC_Node.elf secondary-outputs
 
 # Tool invocations
-GNC_Node.elf GNC_Node.map: $(OBJS) $(USER_OBJS) C:\GitHub\Alaris\Software\GNCN\STM32F446RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "GNC_Node.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\GitHub\Alaris\Software\GNCN\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="GNC_Node.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+GNC_Node.elf GNC_Node.map: $(OBJS) $(USER_OBJS) C:\Users\Marcus\Desktop\Alaris\Software\GNCN\STM32F446RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "GNC_Node.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Marcus\Desktop\Alaris\Software\GNCN\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="GNC_Node.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

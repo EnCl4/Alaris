@@ -50,7 +50,7 @@ extern uint8_t rx_data[8];
 extern uint8_t tx_data[8];  // response (optional)
 
 extern uint8_t counter;
-
+extern bool connected;
 
 volatile uint32_t rise = 0;
 volatile uint32_t fall = 0;
@@ -61,6 +61,8 @@ volatile uint32_t rise4 = 0;
 volatile uint32_t fall4 = 0;
 volatile uint32_t pulse_width4 = 0;
 volatile uint8_t is_rising4 = 1;
+
+
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) //é melhor usar CASE e switch aqui
 {
@@ -233,6 +235,63 @@ BNO055_Euler_t BNO055_ReadEuler(I2C_HandleTypeDef *hi2c)
 
 BNO055_Euler_t e;
 
+
+  typedef struct
+  {
+      float Kp;
+      float Ki;
+      float Kd;
+
+      float integrator;
+      float prev_error;
+
+      float output_min;
+      float output_max;
+
+      float dt;   // sampling time (seconds)
+  } PID_t;
+
+  PID_t roll_pid;
+  PID_t pitch_pid;
+  PID_t yaw_pid;
+  PID_t thr_pid;
+
+
+  float PID_Update(PID_t *pid, float setpoint, float measurement)
+  {
+      float error = setpoint - measurement;
+
+      // Proportional
+      float P = pid->Kp * error;
+
+      // Integral (with anti-windup clamp)
+      pid->integrator += pid->Ki * error * pid->dt;
+
+      if(pid->integrator > pid->output_max)
+          pid->integrator = pid->output_max;
+      else if(pid->integrator < pid->output_min)
+          pid->integrator = pid->output_min;
+
+      // Derivative (on error)
+      float derivative = (error - pid->prev_error) / pid->dt;
+      float D = pid->Kd * derivative;
+
+      // Total output
+      float output = P + pid->integrator + D;
+
+      // Output saturation
+      if(output > pid->output_max)
+          output = pid->output_max;
+      else if(output < pid->output_min)
+          output = pid->output_min;
+
+      // Save state
+      pid->prev_error = error;
+
+      return output;
+  }
+
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -351,11 +410,11 @@ void getPWMTask(void *argument)
 	  if (x == 1000){
 		  x = 0;
 	  }
-	  s1 = 500*sinf(2 * M_PI * 1 * x / 1000);
+	  s1 = 10000*sinf(2 * M_PI * 15 * x / 1000);
 	  s2 = 500*sinf(2 * M_PI * 2 * x / 1000);
 
 	  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (1500 + s2));
-
+	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, (10000 + s1));
 
 
 	  pwm_read[0].period_us = 20000;
@@ -423,8 +482,11 @@ void BNOAccelRun(void *argument)
   for(;;)
   {
 
-	  e = BNO055_ReadEuler(&hi2c1);
 
+	  if(connected == 0){
+		  e = BNO055_ReadEuler(&hi2c1);
+		  e.pitch = e.pitch*(-1);
+	  }
 	  //I2C_Scan();
 	//bno055_vector_t v = bno055_getVectorEuler();
 	//printf("\n >Heading:%.2f \n>Roll:%.2f\n>Pitch:%.2f\r\n", v.x, v.y, v.z);
@@ -464,7 +526,8 @@ void PrintDebug(void *argument)
 //	  }
 //	  printf("\r\n");
 	  printf("\n\r\n>H:%.2f\r\n>R:%.2f\r\n>P:%.2f\r\n\n", e.heading, e.roll, e.pitch);
-    osDelay(20);
+
+	  osDelay(20);
   }}
   else{
 	  osDelay(100000);
