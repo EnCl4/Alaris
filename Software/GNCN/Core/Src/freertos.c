@@ -50,6 +50,11 @@ extern uint8_t rx_data[8];
 extern uint8_t tx_data[8];  // response (optional)
 
 extern uint8_t counter;
+
+extern uint16_t x = 0;
+extern uint16_t y = 0;
+extern uint16_t z = 0;
+
 extern bool connected;
 
 volatile uint32_t rise = 0;
@@ -160,7 +165,21 @@ typedef struct
       uint32_t last_update_tick;
   } PWM_Channel_t;
 
+float phi;
+float xi;
+float theta;
+float beta;
+float h;
+float phi_c = 0;
+float Xc = 0;
 
+float xi_inf = 3.141592653/2;  //colocar pi real
+float K_path = 0.02;
+
+float p[3] = {x, y, z};
+float way_points[3][3] = {{3, 3, 3},{3, 3, 3},{3, 3, 3}};  //pegar as coordenadas dos waypoints com o bohn
+float r[3] = {0, 0, 0};
+float q[3] = {0, 0, 0};
 
 #define PWM_CHANNELS 6
 volatile PWM_Channel_t pwm_read[PWM_CHANNELS];
@@ -251,10 +270,12 @@ BNO055_Euler_t e;
       float dt;   // sampling time (seconds)
   } PID_t;
 
-  PID_t roll_pid;
-  PID_t pitch_pid;
-  PID_t yaw_pid;
-  PID_t thr_pid;
+
+PID_t deflexaoAileron;
+PID_t roll_pid;
+PID_t pitch_pid;
+PID_t yaw_pid;
+PID_t thr_pid;
 
 
   float PID_Update(PID_t *pid, float setpoint, float measurement)
@@ -289,6 +310,15 @@ BNO055_Euler_t e;
       pid->prev_error = error;
 
       return output;
+  }
+
+
+ float produto_escalar(const float v1[], const float v2[], int tamanho) {
+      float resultado = 0.0;
+      for (int i = 0; i < tamanho; i++) {
+          resultado += v1[i] * v2[i];
+      }
+      return resultado;
   }
 
 
@@ -329,6 +359,55 @@ const osThreadAttr_t Print_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow1,
 };
+/* Definitions for PhiControll */
+osThreadId_t PhiControllHandle;
+const osThreadAttr_t PhiControll_attributes = {
+  .name = "PhiControll",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh4,
+};
+/* Definitions for SideSlipControl */
+osThreadId_t SideSlipControlHandle;
+const osThreadAttr_t SideSlipControl_attributes = {
+  .name = "SideSlipControl",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh3,
+};
+/* Definitions for PitchControll */
+osThreadId_t PitchControllHandle;
+const osThreadAttr_t PitchControll_attributes = {
+  .name = "PitchControll",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh5,
+};
+/* Definitions for AltitudeControl */
+osThreadId_t AltitudeControlHandle;
+const osThreadAttr_t AltitudeControl_attributes = {
+  .name = "AltitudeControl",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh7,
+};
+/* Definitions for AirSpeedControl */
+osThreadId_t AirSpeedControlHandle;
+const osThreadAttr_t AirSpeedControl_attributes = {
+  .name = "AirSpeedControl",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh6,
+};
+/* Definitions for HorizontalNav */
+osThreadId_t HorizontalNavHandle;
+const osThreadAttr_t HorizontalNav_attributes = {
+  .name = "HorizontalNav",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime,
+};
+/* Definitions for WayPointsTreat */
+osThreadId_t WayPointsTreatHandle;
+const osThreadAttr_t WayPointsTreat_attributes = {
+  .name = "WayPointsTreat",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime1,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -338,6 +417,13 @@ const osThreadAttr_t Print_attributes = {
 void getPWMTask(void *argument);
 void BNOAccelRun(void *argument);
 void PrintDebug(void *argument);
+void StartPhiControll(void *argument);
+void StartSideSlipControll(void *argument);
+void StartPitchControll(void *argument);
+void StartAltitudeControll(void *argument);
+void StartAirSpeedControll(void *argument);
+void StartHorizontalNav(void *argument);
+void StartWayPointsTreat(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -376,6 +462,27 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of Print */
   PrintHandle = osThreadNew(PrintDebug, NULL, &Print_attributes);
+
+  /* creation of PhiControll */
+  PhiControllHandle = osThreadNew(StartPhiControll, NULL, &PhiControll_attributes);
+
+  /* creation of SideSlipControl */
+  SideSlipControlHandle = osThreadNew(StartSideSlipControll, NULL, &SideSlipControl_attributes);
+
+  /* creation of PitchControll */
+  PitchControllHandle = osThreadNew(StartPitchControll, NULL, &PitchControll_attributes);
+
+  /* creation of AltitudeControl */
+  AltitudeControlHandle = osThreadNew(StartAltitudeControll, NULL, &AltitudeControl_attributes);
+
+  /* creation of AirSpeedControl */
+  AirSpeedControlHandle = osThreadNew(StartAirSpeedControll, NULL, &AirSpeedControl_attributes);
+
+  /* creation of HorizontalNav */
+  HorizontalNavHandle = osThreadNew(StartHorizontalNav, NULL, &HorizontalNav_attributes);
+
+  /* creation of WayPointsTreat */
+  WayPointsTreatHandle = osThreadNew(StartWayPointsTreat, NULL, &WayPointsTreat_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -486,6 +593,7 @@ void BNOAccelRun(void *argument)
 	  if(connected == 0){
 		  e = BNO055_ReadEuler(&hi2c1);
 		  e.pitch = e.pitch*(-1);
+		  phi = e.roll; //passar isso para rad
 	  }
 	  //I2C_Scan();
 	//bno055_vector_t v = bno055_getVectorEuler();
@@ -533,6 +641,191 @@ void PrintDebug(void *argument)
 	  osDelay(100000);
   }
   /* USER CODE END PrintDebug */
+}
+
+/* USER CODE BEGIN Header_StartPhiControll */
+/**
+* @brief Function implementing the PhiControll thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPhiControll */
+void StartPhiControll(void *argument)
+{
+  /* USER CODE BEGIN StartPhiControll */
+  roll_pid.Kp = 1;
+  roll_pid.Ki = 1;
+  roll_pid.Kd = 1;
+
+  roll_pid.output_max = 40;
+  roll_pid.output_min = -40;
+
+
+  deflexaoAileron.Kp = 1;
+  deflexaoAileron.Ki = 1;
+  deflexaoAileron.Kd = 1;
+
+  deflexaoAileron.output_max = 30;
+  deflexaoAileron.output_min = -30;
+
+
+
+  /* Infinite loop */
+  for(;;)
+  {
+	  roll_pid.dt = 0.01;
+	  phi_c = PID_Update(&roll_pid, Xc, X);
+
+
+	  deflexaoAileron.dt = 0.01; //segundos
+	  float deflexaoa = PID_Update(&deflexaoAileron, phi_c, phi);
+	  osDelay(10); //100Hz
+  }
+  /* USER CODE END StartPhiControll */
+}
+
+/* USER CODE BEGIN Header_StartSideSlipControll */
+/**
+* @brief Function implementing the SideSlipControl thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSideSlipControll */
+void StartSideSlipControll(void *argument)
+{
+  /* USER CODE BEGIN StartSideSlipControll */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartSideSlipControll */
+}
+
+/* USER CODE BEGIN Header_StartPitchControll */
+/**
+* @brief Function implementing the PitchControll thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPitchControll */
+void StartPitchControll(void *argument)
+{
+  /* USER CODE BEGIN StartPitchControll */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartPitchControll */
+}
+
+/* USER CODE BEGIN Header_StartAltitudeControll */
+/**
+* @brief Function implementing the AltitudeControl thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartAltitudeControll */
+void StartAltitudeControll(void *argument)
+{
+  /* USER CODE BEGIN StartAltitudeControll */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartAltitudeControll */
+}
+
+/* USER CODE BEGIN Header_StartAirSpeedControll */
+/**
+* @brief Function implementing the AirSpeedControl thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartAirSpeedControll */
+void StartAirSpeedControll(void *argument)
+{
+  /* USER CODE BEGIN StartAirSpeedControll */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartAirSpeedControll */
+}
+
+/* USER CODE BEGIN Header_StartHorizontalNav */
+/**
+* @brief Function implementing the HorizontalNav thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartHorizontalNav */
+void StartHorizontalNav(void *argument)
+{
+  /* USER CODE BEGIN StartHorizontalNav */
+  /* Infinite loop */
+  for(;;)
+  {
+	  float Xq = atan2(q[1], q[0]);
+	  float epy = - sin(Xq) * (p[0] - r[0]) + cos(Xq) * (p[1] - r[1]);
+	  Xc = Xq - xi_inf*(2/3.141592653)*atan(K_path*epy);
+    osDelay(10);
+  }
+  /* USER CODE END StartHorizontalNav */
+}
+
+/* USER CODE BEGIN Header_StartWayPointsTreat */
+/**
+* @brief Function implementing the WayPointsTreat thread.
+* @param argument: Not used
+* @retval None
+*/
+
+bool trocarWayPoint = 0;
+
+/* USER CODE END Header_StartWayPointsTreat */
+void StartWayPointsTreat(void *argument)
+{
+  /* USER CODE BEGIN StartWayPointsTreat */
+  int i = 1;
+  float n[3] = {0, 0, 0};
+  /* Infinite loop */
+  for(;;)
+  {
+	  r = way_points[i-1]; //talvez mudar para o modo feio
+	  if(trocarWayPoint == 1){
+
+		  float aux2[3] = {way_points[i][0] - way_points[i-1][0], way_points[i][1] - way_points[i-1][1], way_points[i][2] - way_points[i-1][2]};
+		  float norma_q = sqrt(pow(aux2[0],2) + pow(aux2[1],2) + pow(aux2[2],2));
+		  float q_i_m1[3] = {aux2[0]/norma_q, aux2[1]/norma_q, aux2[2]/norma_q};
+		  q[0] = q_i_m1[0];
+		  q[1] = q_i_m1[1];
+		  q[2] = q_i_m1[2];
+		  float aux3[3] = {way_points[i+1][0] - way_points[i][0], way_points[i+1][1] - way_points[i][1], way_points[i+1][2] - way_points[i][2]};
+		  norma_q = sqrt(pow(aux3[0],2) + pow(aux3[1],2) + pow(aux3[2],2));
+		  float q_1[3] = {aux3[0]/norma_q, aux3[1]/norma_q, aux3[2]/norma_q};
+		  float aux4[3] = {q_i_m1[0] + q_1[0], q_i_m1[1] + q_1[1], q_i_m1[2] + q_1[2]};
+		  norma_q = sqrt(pow(aux4[0],2) + pow(aux4[1],2) + pow(aux4[2],2));
+		  n[0] = aux4[0]/norma_q;
+		  n[1] = aux4[1]/norma_q;
+		  n[2] = aux4[2]/norma_q;
+		  trocarWayPoint = 0;
+	  }
+
+	  float aux[3] = {p[0] - r[0], p[1] - r[1], p[2] - r[2]};
+	  float H = produto_escalar(aux, n, 3);
+
+	  if (H >= 0){
+		i++;
+		trocarWayPoint = 1;
+	  }
+
+    osDelay(10);
+  }
+  /* USER CODE END StartWayPointsTreat */
 }
 
 /* Private application code --------------------------------------------------*/

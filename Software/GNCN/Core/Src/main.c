@@ -55,8 +55,9 @@ uint8_t tx_data[8];  // response (optional)
 
 uint8_t counter = 0;
 
-uint16_t varA = 0;
-uint16_t varB = 0;
+uint16_t x = 0;
+uint16_t y = 0;
+uint16_t z = 0;
 
 uint8_t flags = 0;
 uint8_t checksum = 0;
@@ -78,15 +79,16 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
             // ---- 2. Extract data ----
             counter = rx_data[1];
 
-            varA = (rx_data[2] << 8) | rx_data[3];
-            varB = (rx_data[4] << 8) | rx_data[5];
+            x = (rx_data[2] << 8) | rx_data[3];
+            y = (rx_data[4] << 8) | rx_data[5];
+            z = (rx_data[6] << 8) | rx_data[7];
 
-            flags = rx_data[6];
-            checksum = rx_data[7];
+            flags = rx_data[8];
+            checksum = rx_data[9];
 
             // ---- 3. Validate checksum ----
             calc = rx_data[0] ^ rx_data[1] ^ rx_data[2] ^ rx_data[3] ^
-                           rx_data[4] ^ rx_data[5] ^ rx_data[6];
+                           rx_data[4] ^ rx_data[5] ^ rx_data[6] ^ rx_data[7] ^ rx_data[8];
 
             if (calc != checksum){
             	connected = 0;
@@ -99,7 +101,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
         tx_data[1] = rx_data[1]; // echo counter (good for sync/debug)
 
         // ---- 5. RE-ARM SPI (CRITICAL) ----
-        HAL_SPI_TransmitReceive_IT(&hspi1, tx_data, rx_data, 8);
+        HAL_SPI_TransmitReceive_IT(&hspi1, tx_data, rx_data, 10);
     }
 }
 
@@ -317,13 +319,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 180;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 15;
+  RCC_OscInitStruct.PLL.PLLN = 216;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
