@@ -1,0 +1,7 @@
+../Core/Src/dapu_state.c:21:6:dapu_state_init	8	static
+../Core/Src/dapu_state.c:26:6:dapu_state_lock	8	static
+../Core/Src/dapu_state.c:36:6:dapu_state_unlock	8	static
+../Core/Src/dapu_state.c:44:6:dapu_state_set_status	16	static
+../Core/Src/dapu_state.c:51:6:dapu_state_clear_status	16	static
+../Core/Src/dapu_state.c:73:6:dapu_micros_init	4	static
+../Core/Src/dapu_state.c:91:10:dapu_micros	40	static,ignoring_inline_asm

@@ -1,0 +1,15 @@
+../Core/Inc/dapu_analog.h:26:21:analog_counts_to_volts	1
+../Core/Src/dapu_analog.c:39:6:analog_init_rtos	1
+../Core/Src/dapu_analog.c:44:6:analog_start	4
+../Core/Src/dapu_analog.c:64:17:current_scan_index	17
+../Core/Src/dapu_analog.c:71:10:analog_latest	1
+../Core/Src/dapu_analog.c:79:6:analog_latest_scan	2
+../Core/Src/dapu_analog.c:91:7:analog_avg_counts	4
+../Core/Src/dapu_analog.c:119:14:air_density	5
+../Core/Src/dapu_analog.c:136:6:analog_update_pitot	3
+../Core/Src/dapu_analog.c:165:6:analog_update_aoa	1
+../Core/Src/dapu_analog.c:178:6:analog_update_flex	1
+../Core/Src/dapu_analog.c:209:6:analog_mic_wait_block	3
+../Core/Src/dapu_analog.c:229:20:mic_block_ready	3
+../Core/Src/dapu_analog.c:239:6:HAL_ADC_ConvHalfCpltCallback	2
+../Core/Src/dapu_analog.c:248:6:HAL_ADC_ConvCpltCallback	2

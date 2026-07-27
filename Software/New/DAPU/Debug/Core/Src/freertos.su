@@ -1,0 +1,15 @@
+../Core/Src/freertos.c:172:6:MX_FREERTOS_Init	8	static
+../Core/Src/freertos.c:279:6:BootTask	16	static
+../Core/Src/freertos.c:300:6:SD_WriterTask	24	static
+../Core/Src/freertos.c:341:6:LogSampleTask	24	static
+../Core/Src/freertos.c:379:6:GpsTask	24	static
+../Core/Src/freertos.c:413:6:ImuTask	64	static
+../Core/Src/freertos.c:471:6:PitotTask	24	static
+../Core/Src/freertos.c:497:6:Bmp280Task	32	static
+../Core/Src/freertos.c:540:6:Ms5611Task	24	static
+../Core/Src/freertos.c:582:6:AoaTask	24	static
+../Core/Src/freertos.c:611:6:RpmTask	40	static
+../Core/Src/freertos.c:651:6:FlexTask	24	static
+../Core/Src/freertos.c:679:6:ConsoleTask	24	static
+../Core/Src/freertos.c:705:6:vApplicationStackOverflowHook	24	static,ignoring_inline_asm
+../Core/Src/freertos.c:717:6:vApplicationMallocFailedHook	16	static,ignoring_inline_asm

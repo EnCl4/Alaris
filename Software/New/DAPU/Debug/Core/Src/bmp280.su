@@ -1,0 +1,11 @@
+../Core/Src/bmp280.c:51:20:cs_low	8	static
+../Core/Src/bmp280.c:52:20:cs_high	8	static
+../Core/Src/bmp280.c:54:13:bmp280_read_regs	24	static
+../Core/Src/bmp280.c:67:13:bmp280_write_reg	24	static
+../Core/Src/bmp280.c:81:13:bmp280_read_calibration	32	static
+../Core/Src/bmp280.c:109:6:bmp280_init	16	static
+../Core/Src/bmp280.c:155:6:bmp280_present	4	static
+../Core/Src/bmp280.c:162:14:compensate_temperature	24	static
+../Core/Src/bmp280.c:173:14:compensate_pressure	328	static
+../Core/Src/bmp280.c:199:6:bmp280_read	40	static
+../Core/Src/bmp280.c:234:7:bmp280_altitude	16	static

@@ -1,0 +1,10 @@
+../Core/Src/freertos.c:42:5:_write	24	static
+../Core/Src/freertos.c:67:6:HAL_TIM_IC_CaptureCallback	24	static
+../Core/Src/freertos.c:147:6:PWM_set	4	static
+../Core/Src/freertos.c:174:6:I2C_Scan	16	static
+../Core/Src/freertos.c:207:16:BNO055_ReadEuler	88	static
+../Core/Src/freertos.c:260:9:PID_Update	48	static
+../Core/Src/freertos.c:349:6:MX_FREERTOS_Init	8	static
+../Core/Src/freertos.c:397:6:getPWMTask	24	static
+../Core/Src/freertos.c:460:6:BNOAccelRun	40	static
+../Core/Src/freertos.c:505:6:PrintDebug	48	static

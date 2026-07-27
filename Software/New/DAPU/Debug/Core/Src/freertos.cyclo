@@ -1,0 +1,15 @@
+../Core/Src/freertos.c:172:6:MX_FREERTOS_Init	13
+../Core/Src/freertos.c:279:6:BootTask	0
+../Core/Src/freertos.c:300:6:SD_WriterTask	4
+../Core/Src/freertos.c:341:6:LogSampleTask	2
+../Core/Src/freertos.c:379:6:GpsTask	2
+../Core/Src/freertos.c:413:6:ImuTask	4
+../Core/Src/freertos.c:471:6:PitotTask	1
+../Core/Src/freertos.c:497:6:Bmp280Task	3
+../Core/Src/freertos.c:540:6:Ms5611Task	3
+../Core/Src/freertos.c:582:6:AoaTask	1
+../Core/Src/freertos.c:611:6:RpmTask	4
+../Core/Src/freertos.c:651:6:FlexTask	1
+../Core/Src/freertos.c:679:6:ConsoleTask	1
+../Core/Src/freertos.c:705:6:vApplicationStackOverflowHook	1
+../Core/Src/freertos.c:717:6:vApplicationMallocFailedHook	1

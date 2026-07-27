@@ -1,0 +1,8 @@
+../Core/Src/main.c:79:5:main	8	static
+../Core/Src/main.c:156:6:SystemClock_Config	128	static
+../Core/Src/main.c:226:6:PeriphCommonClock_Config	192	static
+../Core/Src/main.c:253:6:DAPU_BootLedInit	32	static
+../Core/Src/main.c:268:6:DAPU_BootLedFlash	32	static,ignoring_inline_asm
+../Core/Src/main.c:279:6:DAPU_BlinkForever	32	static,ignoring_inline_asm
+../Core/Src/main.c:302:6:MPU_Config	24	static
+../Core/Src/main.c:333:6:Error_Handler	8	static,ignoring_inline_asm

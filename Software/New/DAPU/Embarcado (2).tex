@@ -1,0 +1,1901 @@
+% \chapter{Sistema Embarcado}
+
+% Visando a implementação do projeto em uma aeronave real, tornou-se necessário o desenvolvimento de um sistema embarcado capaz de: coletar dados, processá-los, estimar trajetória e enviar os comandos para aeronave.
+
+% Visando um desenvolvimento satisfatório, adotou-se o fluxograma de trabalho apresentado na Figura \ref{fig:fluxEmbarcado}.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Fluxograma do desenvolvimento do embarcado.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/FluxoEmbarcado.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:fluxEmbarcado}
+% \end{figure}
+
+% \section{Requisitos de projeto}
+
+% A fim de alcançar os objetivos do projeto, definiu-se os requisitos para serem utilizados no desenvolvimento do sistema embarcado, dispostos na Tabela \ref{tab:requisitosDoEmbarcado}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Requisitos do sistema embarcado.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Categoria}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Identificação}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Requisito}}               \\ \hline
+%                                                                  & RF.01                                                               & O sistema deve ser capaz de adquirir dados de sensores analógicos e digitais. \\ \cline{2-3} 
+%                                                                  & RF.02                                                               & O sistema deve processar os dados em tempo real.                              \\ \cline{2-3} 
+%                                                                  & RF.03                                                               & O sistema deve estimar o estado da aeronave (posição, velocidade, atitude).   \\ \cline{2-3} 
+%                                                                  & RF.04                                                               & O sistema deve armazenar os dados de voo.                                     \\ \cline{2-3} 
+%                                                                  & RF.05                                                               & O sistema deve receber comandos do piloto.                                    \\ \cline{2-3} 
+%                                                                  & RF.06                                                               & O sistema deve gerar sinais de controle para atuadores.                       \\ \cline{2-3} 
+%                                                                  & RF.07                                                               & O sistema deve operar de forma distribuída em múltiplos subsistemas.          \\ \cline{2-3}
+% \multirow{-8}{*}{Funcional}                                      & RF.08                                                               & O sistema deve monitorar continuamente a integridade dos seus subsistemas (\textit{health management}). \\ \hline
+%                                                                  & RP.01                                                               & O sistema deve operar com taxa de amostragem  de 200 Hz.                \\ \cline{2-3} 
+%                                                                  & RP.02                                                               & O sistema deve garantir execução determinística (uso de RTOS).                \\ \cline{2-3} 
+%                                                                  & RP.03                                                               & A transmissão de dados não deve causar perda de dados.                        \\ \cline{2-3} 
+%                                                                  & RP.04                                                               & A transmissão não deve interferir no controle da aeronave.                    \\ \cline{2-3}
+% \multirow{-5}{*}{Performance}                                    & RP.05                                                               & As transições entre modo manual e autônomo devem ser seguras e reversíveis a qualquer instante. \\ \hline
+%                                                                  & RC.01                                                               & O sistema deve continuar operando em caso de falha de comunicação.            \\ \cline{2-3} 
+%                                                                  & RC.02                                                               & Funções críticas devem ser implementadas em hardware sempre que possível.     \\ \cline{2-3}
+%                                                                  & RC.03                                                               & O piloto deve ser capaz de retomar o controle manual da aeronave a qualquer momento, com latência mínima. \\ \cline{2-3}
+% \multirow{-4}{*}{Confiabilidade}                                 & RC.04                                                               & Sensores críticos para estimativa de atitude devem possuir redundância. \\ \hline
+%                                                                  & RA.01                                                               & O sistema deve operar corretamente entre $10\,^\circ C$ e $47\,^\circ C$ (temperatura média de $28,4\,^\circ C$). \\ \cline{2-3}
+%                                                                  & RA.02                                                               & O sistema deve operar corretamente para velocidades relativas entre $-6\,m/s$ e $20\,m/s$. \\ \cline{2-3}
+%                                                                  & RA.03                                                               & O sistema deve operar corretamente entre $0\,m$ e $1000\,m$ de altitude. \\ \cline{2-3}
+% \multirow{-4}{*}{Ambiental}                                      & RA.04                                                               & O sistema deve suportar fator de carga entre $-3g$ e $3g$. \\ \hline
+%                                                                  & RM.01                                                               & A PCB deve ter no máximo duas camadas.                                        \\ \cline{2-3} 
+% \multirow{-2}{*}{Manufatura}                                     & RM.02                                                               & As dimensões máximas do sistemas deve ser 100mm x 100mm.                      \\ \hline
+% \end{tabular}}
+% \caption*{Fonte: Próprio Autor.}
+% \label{tab:requisitosDoEmbarcado}
+% \end{table}
+
+% Os requisitos ambientais (RA.01 a RA.04) foram definidos a partir de dados de voo coletados pela equipe ao longo dos últimos três anos, aos quais aplicou-se um fator de segurança para garantir robustez do sistema frente a condições adversas. A faixa de temperatura considera as medições internas da fuselagem; a faixa de velocidade relativa contempla tanto a condição de cruzeiro quanto rajadas de vento de través durante a partida do motor, com a aeronave ainda parada; a faixa de altitude parte da condição de operação em São Bernardo do Campo - SP, porem com um teto abrangente para evitar problemas relacionados a diferentes altitudes densidade; e o fator de carga é derivado dos limites do diagrama V-n fornecido pela equipe.
+
+% \section{Hardware}
+
+% Visando cumprir os requisitos RF.01, RF.04 a RF.07, idealizou-se o sistema (Figura \ref{fig:diagramaDoSistema}).
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Diagrama do sistema embarcado.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/SubSistemas.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:diagramaDoSistema}
+% \end{figure}
+
+% O sistema apresentado a cima, foi estruturado de modo que as tarefas sejam distribuídas entres diversos núcleos de processamento, garantindo uma melhor confiabilidade nos processos sendo executados.
+
+% Para este relatório será referenciado a cada sub-sistema assumindo as funções dispostas na Tabela \ref{tab:SubSis_Functions}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Sub-sistemas e suas respectivas funções.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sub-Sistema}}                             & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Função}}                                                                                                                                    \\ \hline
+% \textit{\begin{tabular}[c]{@{}l@{}}Power Distribution Network\\ (PDN)\end{tabular}}            & \begin{tabular}[c]{@{}l@{}}Gerenciamento da bateria\\ Regular tensão\\ Estabilização da tensão\end{tabular}                                                                                     \\ \hline
+% \textit{\begin{tabular}[c]{@{}l@{}}Data Acquisition \& Processing Unit\\ (DAPU)\end{tabular}}  & \begin{tabular}[c]{@{}l@{}}Coleta de dados (Analógiocos e Digitais)\\ Processamento/Estimativa de estados\\ Salvamento dos dados\\ Organização dos dados na rede\\ \textit{Health Menagement}\end{tabular} \\ \hline
+% \textit{\begin{tabular}[c]{@{}l@{}}Guidence Navegation \& Controll Unit\\ (GNCU)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Identificação dos comandos do piloto\\ Envio dos sinais para os atuadores\\ GNC da aeronave\end{tabular}                                                       \\ \hline
+% \textit{\begin{tabular}[c]{@{}l@{}}Communication Gateway Unit\\ (CGU)\end{tabular}}            & \begin{tabular}[c]{@{}l@{}}Transmissão dos dados\\ Receber parâmetros e comando básicos\end{tabular}                                                                                            \\ \hline
+% \end{tabular}
+% \caption*{Fonte: Produzido pelo autor.}
+% \label{tab:SubSis_Functions}
+% \end{table}
+
+% Conforme apresentado na Tabela \ref{tab:SubSis_Functions}, o GNCU depende das estimativas de estado calculadas pelo DAPU, recebidas por meio do SPI entre as duas unidades, para executar as malhas de controle. Essa dependência representa um ponto único de falha: caso o enlace de comunicação seja interrompido ou o DAPU apresente alguma falha de processamento, o GNCU perderia sua única referência de atitude, comprometendo diretamente a referência da aeronave no exato momento em que o controle automático mais precisaria dela.
+
+% Para eliminar esse ponto único de falha, atendendo aos requisitos RC.02 e RC.04, o GNCU deve possuir um sensor de atitude próprio, integrado ao seu \textit{hardware} e independente da estimativa fornecida pelo DAPU. Dessa forma, em caso de falha de comunicação (RC.01), o GNCU é capaz de transitar para um modo de operação degradado, mantendo uma estimativa mínima de atitude suficiente para estabilizar a aeronave até a retomada do controle manual pelo piloto (RC.03) ou a ativação do estado de \textit{Failsafe}, discutido na Seção \ref{subsec:maquinaEstados}.
+
+% Como o GNCU já é responsável pela execução das malhas de controle em tempo real, a seleção desse sensor de \textit{backup} prioriza soluções com fusão sensorial embarcada, de modo a obter a estimativa de atitude diretamente no \textit{hardware} sem adicionar custo computacional relevante à unidade; a escolha do componente específico é detalhada na Seção \ref{subsec:sensores}.
+
+% Além disso, todo o sistema de identificação/envio dos comando da aeronave deve ser baseada em \textit{hardware}, visando redução do custo computacional aumentando confiabilidade e indo de acordo com RC.02.
+
+% \subsection{Sensores}
+% \label{subsec:sensores}
+%  Para a seleção de todos os sensores listou-se os sensores comerciais para cada dado requerido, analisando custo, precisão, taxa de amostragem e resolução.
+
+% Dentre os dados adquiridos pelo sistema, a altitude em relação ao solo e a atitude são os parâmetros mais críticos para o presente trabalho: o objetivo da aeronave é manter-se a uma distância determinada do solo para o aproveitamento do efeito solo, de modo que a qualidade dessa estimativa impacta diretamente o desempenho da malha de controle correspondente. Cabe ressaltar que o escopo deste capítulo está restrito ao desenvolvimento do sistema embarcado responsável por disponibilizar essa medida, sendo o projeto da malha de controle tratado no capítulo \ref{chap:guiagemEcontrole}.
+
+%  \textbf{Altitude} - para medição da altitude em relação ao solo, atendendo aos requisitos RF.03 e RA.03, optou-se por sensores baseados em pressão atmosférica (Tabela \ref{Tab:SensoresPress}).
+
+%  \begin{table}[H]
+%  \centering
+%  \caption{Sensores de pressão analisados.}
+%  \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|c|c|c|c|c|}
+% \hline
+% \rowcolor[HTML]{BFBFBF} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{BFBFBF}\textbf{Sensor}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Precisão}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Resolução Altitude}}  & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Amostragem}} & \cellcolor[HTML]{C0C0C0}\textbf{Preço {[}R\${]}} \\ \hline
+% \cellcolor[HTML]{FFFFFF}\textbf{Bosch BMP390}                 & \cellcolor[HTML]{FFFFFF}±0,03 hPa                                       & \cellcolor[HTML]{FFFFFF}$\sim$±0,25 m                                                                           & \cellcolor[HTML]{FFFFFF}200 Hz                               & $\sim$40,00                                      \\ \hline
+% \cellcolor[HTML]{FFFFFF}\textbf{Infineon DPS310}              & ±0,05 hPa                                                               & $\sim$±0,5 m                                                                                                                             & 128 Hz                                                       & $\sim$80,00                                      \\ \hline
+% \textbf{TE MS5611}                                            & ±0,012 hPa                                                               & $\sim$±0,1 m                                                                                                                       & 120 Hz                                                      & $\sim$25,00                                      \\ \hline
+% \textbf{TDK ICP-10125}                                        & ±0,04 hPa                                                              & $\sim$±0,3 m                                                                                                                           & 200 Hz                                                         & $\sim$23,00                                      \\ \hline
+% \end{tabular}}
+% \label{Tab:SensoresPress}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% Realizou-se o \textit{trade-off} dos requisitos supracitados, selecionando os sensores BMP390 e MS5611; a combinação de ambos permite explorar suas diferentes frequências de amostragem por meio de fusão sensorial, conforme detalhado na Seção \ref{subsec:processamentoEstimacao}.
+
+
+% \textbf{Temperatura} - Para seleção dos sensores de temperatura, atendendo ao requisito RA.01, deu-se prioridade ao sensores já selecionados para medição de pressão uma vez que também possuem capacidade de fazer a aquisição da temperatura.
+
+% Optando, pela não adição de um sensor adicional uma vez que as suas especificações se demonstraram suficientes para o projeto (Tabela \ref{Tab:SensoresTemp}).
+
+% \begin{table}[H]
+% \centering
+% \caption{Sensores de temperatura analisados.}
+% \begin{tabular}{|l|c|c|c|c|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sensor}} & \textbf{Precisão}               & \textbf{Faixa Típica} & \textbf{Amostragem} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}\textbf{Preço {[}R\${]}}} \\ \hline
+% \cellcolor[HTML]{FFFFFF}BMP390               & \cellcolor[HTML]{FFFFFF}±0.5 °C & –40 a +85 °C          & 200 Hz              & $\sim$40,00                                                           \\ \hline
+% DS18B20                                              & ±0.5 °C                         & –55 a +125 °C         & 10Hz                & $\sim$6,00                                                            \\ \hline
+% MS5611                                       & ±1 °C                           & –40 a +85 °C          & 120 Hz              & $\sim$25,00                                                           \\ \hline
+% TMP117                                               & ±0.1 °C                         & –55 a +150 °C         & 8 Hz                & $\sim$80,00                                                           \\ \hline
+% \end{tabular}
+% \label{Tab:SensoresTemp}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+%  A estimativa de velocidade, posição e atitude da aeronave, atendendo ao requisito RF.03, é obtida a partir de três categorias de sensores: pressão diferencial (tubo de pitot), GNSS e \textit{Inertial Measurement Unit} (IMU). A forma como esses sensores são combinados é detalhada na Seção \ref{subsec:processamentoEstimacao}.
+
+% \textbf{Pressão Diferencial} - Para a medição da velocidade relativa por meio da pressão dinâmica, comparam-se os sensores comerciais dispostos na Tabela \ref{Tab:SensoresPressaoDIF}.
+
+%  \begin{table}[H]
+% \centering
+% \caption{Sensores de pressão dinâmica analisados.}
+% \begin{tabular}{|l|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \textbf{Sensor} & \textbf{Range} & \textbf{Precisão} & \textbf{Amostragem} \\ \hline
+
+% % NXP MPXV7002DP 
+% % & ±2 kPa
+% % & ±2.5–5\% 
+% % & Analógico \\ \hline
+
+% % XGZP6897A 
+% % & ±5 kPa
+% % & ±1.5\%  
+% % & Analógico \\ \hline
+
+% MS4525DO 
+% & ±7 kPa 
+% & ±1\% 
+% & 500–2000 Hz \\ \hline
+
+% MPS20N0040D
+% & 0–40 kPa 
+% & ±10\%
+% & Analógico \\ \hline
+
+% \end{tabular}
+% \label{Tab:SensoresPressaoDIF}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% Vale ressaltar que a pressão dinâmica será coletada por meio de um tubo de pitot (Figura \ref{fig:tubo pitot}) conectado ao sensor por meio de mangueiras. Além disso, o tubo de pitot será instalado no Bordo de Ataque da aeronave, distante da \textit{skin} de modo a minimizar efeitos de interferência com a própria aeronave.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Tubo de pitot.}
+%     \includegraphics[width=0.5\linewidth]{Imagens/metodologia/Tubo de pitot.PNG}
+%     \caption*{Fonte: \cite{makersportal_pitot}.}
+%     \label{fig:tubo pitot}
+% \end{figure}
+
+% Selecionou-se o MPS20N0040D para a medição da pressão diferencial. Apesar de o MS4525DO apresentar precisão superior e saída digital, optou-se pelo MPS20N0040D por seu menor custo e por permitir um tempo de resposta mais rápido e maior flexibilidade no processamento do sinal, detalhado a seguir.
+
+% \textbf{Processamento do sinal de pressão diferencial} - O sensor mede a pressão diferencial por meio de uma ponte de \textit{Wheatstone}, cuja resistência típica varia entre 4 e 6 k$\Omega$ e cuja tensão de saída em fundo de escala (a 40 kPa) é de apenas 50 a 100 mV, um nível de sinal baixo demais para ser lido diretamente pelo ADC do microcontrolador com resolução adequada. Por esse motivo, adicionou-se um amplificador de instrumentação INA333 para condicionar o sinal antes da conversão, cujo resistor de ganho $R_g$ é implementado por meio de um \textit{trimmer} de $10\,k\Omega$, permitindo o ajuste fino do ganho.
+
+% Considerando a faixa de velocidades relativas de operação definida em RA.02 ($-6$ a $20\,m/s$), a pressão dinâmica $q = \frac{1}{2}\rho V^2$ esperada é pequena frente à faixa de fundo de escala do sensor: no ponto de maior exigência ($V = 20\,m/s$, ao nível do mar), $q \approx 245\,Pa = 0,245\,kPa$, correspondendo a uma saída bruta do sensor de apenas 0,3 a 0,6 mV (a depender da sensibilidade da unidade dentro da tolerância de fabricação). Elevar esse sinal até a faixa plena do ADC (3,3 V) exigiria um ganho da ordem de milhares, incompatível com um único estágio de amplificação associado a um \textit{trimmer} de $10\,k\Omega$. Optou-se, portanto, por utilizar o ganho máximo especificado para o INA333, $G=1000$, obtido com:
+% \begin{equation}
+% R_g = \frac{100\,k\Omega}{G-1} = \frac{100\,k\Omega}{999} \approx 100\,\Omega
+% \end{equation}
+% valor plenamente ajustável dentro da faixa do \textit{trimmer} utilizado.
+
+% Com esse ganho, a saída amplificada varia de aproximadamente 0,31 V a 0,61 V ao longo de toda a faixa de velocidades de RA.02 (Tabela \ref{Tab:PitotVoltagemADC}, pior caso de sensibilidade do sensor) utilizando entre 9\% e 19\% da faixa plena do ADC de 16 \textit{bits} ($V_{ref} = 3,3\,V$), porém com ampla margem de segurança contra saturação frente a variações de sensibilidade do sensor, temperatura e altitude.
+
+% \begin{table}[H]
+% \centering
+% \caption{Tensão amplificada e contagem do ADC em função da velocidade relativa ($G=1000$, pior caso de sensibilidade do sensor).}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|c|c|c|c|}
+% \hline
+% \rowcolor[HTML]{C0C0C0}
+% \textbf{Velocidade [m/s]} & \textbf{Pressão dinâmica [kPa]} & \textbf{Tensão amplificada [V]} & \textbf{Contagem ADC (16 \textit{bits})} \\ \hline
+% 2  & 0,00245 & 0,0031 & 61   \\ \hline
+% 5  & 0,01531 & 0,0191 & 380  \\ \hline
+% 10 & 0,06125 & 0,0766 & 1521 \\ \hline
+% 15 & 0,13781 & 0,1723 & 3421 \\ \hline
+% 20 & 0,24500 & 0,3063 & 6082 \\ \hline
+% \end{tabular}}
+% \caption*{Fonte: Produzido pelo autor.}
+% \label{Tab:PitotVoltagemADC}
+% \end{table}
+
+% Apesar de não utilizar a faixa plena do ADC, a resolução de velocidade resultante permanece ampla: como a tensão amplificada é proporcional a $V^2$, sua sensibilidade à variação de velocidade cresce com a própria velocidade, de modo que a resolução (pior caso) varia de aproximadamente $0,016\,m/s$ por \textit{bit} do ADC em baixa velocidade ($2\,m/s$) a cerca de $0,0016\,m/s$ por \textit{bit} em velocidade de cruzeiro ($20\,m/s$) em ambos os casos, uma resolução muito superior à necessária para a estimativa de velocidade do sistema. O \textit{trimmer} permite, ainda, compensar eventuais desvios de \textit{offset} da ponte e reajustar o ganho durante a calibração em bancada, caso necessário.
+
+% Além disso, como a densidade do ar $\rho$ varia com a altitude de operação (RA.03), a velocidade obtida a partir da pressão diferencial deve ser corrigida com base na altitude barométrica estimada pelos sensores de pressão, garantindo a exatidão da medida ao longo de toda a faixa operacional.
+
+% \textbf{GNSS} - Para a medição de posição e velocidade em relação ao solo, comparam-se os receptores comerciais dispostos na Tabela \ref{tab:gps-comparison}.
+ 
+% \begin{table}[H]
+% \centering
+% \caption{Sensores GNSS analisados.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|l|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0}
+% \textbf{Sensor} & \textbf{Precisão posição} & \textbf{Amostragem} & \textbf{Sensibilidade} & \textbf{Preço [R\$]} \\ \hline
+
+% NEO-6M 
+% & 2.5 m 
+% & 5 Hz  
+% & $- 161 dBm$ 
+% & \textit{a preencher} \\ \hline
+
+% NEO-7M 
+% & 2.5 m (GPS), 4 m (GLONASS) 
+% & 10 Hz  
+% & $- 161 dBm$ 
+% & \textit{a preencher} \\ \hline
+
+% NEO-M8N 
+% & 2.5 m (GPS + GLONASS) 
+% & 10 Hz 
+% & $-167 dBm$  
+% & \textit{a preencher} \\ \hline
+
+% \end{tabular}}
+% \caption*{Fonte: Produzido pelo autor.}
+% \label{tab:gps-comparison}
+% \end{table}
+
+% Selecionou-se o GPS NEO M8N, responsável tanto pela medição de posição quanto pela velocidade em relação ao solo.
+
+% \textbf{Atitude} - Para a estimativa de atitude, taxas angulares e acelerações da aeronave, atendendo também ao requisito RC.04 de redundância de sensores críticos, comparam-se os módulos de IMU dispostos na Tabela \ref{tab:accel-comparison}.
+
+%  \begin{table}[H]
+% \centering
+% \caption{Sensores IMUs analisados.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|l|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0}
+% \textbf{Sensor} & \textbf{Range} & \textbf{Precisão} & \textbf{Amostragem} & \textbf{Preço [R\$]} \\ \hline
+
+% \textbf{BMI088 + LIS3MDL} 
+% & \begin{tabular}[c]{@{}l@{}}Accel: ±3g a ±24g\\ Gyro: ±125 a ±2000 dps\\ Mag: ±4 a ±16 gauss\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel noise: $0.14 mg/\sqrt{Hz}$\\ Gyro noise: 0.014 $dps/\sqrt{Hz}$\\ Mag: ±0.1–0.2 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel:   1.4 kHz\\ Gyro:   2 kHz\\ Mag:   155 Hz\end{tabular}
+% & \textit{a preencher} \\ \hline
+
+% \textbf{ICM-20948}
+% & \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±250 a ±2000 dps\\ Mag: ±4900 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel noise: $0.9 mg/\sqrt{Hz}$\\ Gyro noise: 0.014 $dps/\sqrt{Hz}$\\ Mag: ±1 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel:   1.125 kHz\\ Gyro:   1.125 kHz\\ Mag: 100 Hz\end{tabular}
+% & \textit{a preencher} \\ \hline
+
+% \textbf{BNO055}
+% & \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±125 a ±2000 dps\\ Mag: ±1300 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Fusion accuracy: ~2°\\ Gyro noise: 0.014$ dps/\sqrt{Hz}$\\ Mag: ±0.3 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Fusion: 100 Hz\\ IMU bruto: 100 Hz\end{tabular}
+% & \textit{a preencher} \\ \hline
+
+% \textbf{MPU6050 + HMC5883L}
+% & \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±250 a ±2000 dps\\ Mag: ±1.9 a ±8 gauss\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel noise: $400 µg/\sqrt{Hz}$\\ Gyro noise: 0.05 $dps/\sqrt{Hz}$\\ Mag: ±0.1–0.3 µT\end{tabular}
+% & \begin{tabular}[c]{@{}l@{}}Accel: 1 kHz\\ Gyro: 8 kHz\\ Mag: 75 Hz\end{tabular}
+% & \textit{a preencher} \\ \hline
+
+% \end{tabular}}
+% \caption*{Fonte: Produzido pelo autor.}
+% \label{tab:accel-comparison}
+% \end{table}
+
+% Selecionaram-se o ICM20948 e o BNO055 como IMU, atendendo, neste último caso, ao requisito RC.04 de redundância de sensores críticos de atitude.
+
+% Vale ressaltar que o BNO055 será integrado ao GNCU, uma vez que ele já possui DMP que reduz o custo computacional para estimativa da atitude, servindo como backup caso tenha algum problema com o DAPU.
+
+% \textbf{AOA} - Para a medição do ângulo de ataque, atendendo ao requisito RF.01, optou-se pela utilização de um potenciômetro acoplado a uma aleta perfilada (Figura \ref{fig:AOA2}).
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Aleta AOA conexão com potenciômetro.}
+%     \includegraphics[width=0.5\linewidth]{Imagens/metodologia/AOA2.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:AOA2}
+% \end{figure}
+
+% Está aleta será posicionado em uma posição em que há uma baixa influência na direção do escoamento decorrente do formato da asa e fuselagem (Figura \ref{fig:cfdASA}).
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{CFD da região lateral do escoamento na região da asa e fuselagem.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/CFD_ASA.png}
+%     \caption*{Fonte: Harpia Aerodesign UFABC (2023).}
+%     \label{fig:cfdASA}
+% \end{figure}
+
+
+% \textbf{Tração} – Para estimar a tração do motor, atendendo ao requisito RF.01, optou-se pela utilização de um microfone eletreto, no qual a frequência captada é proporcional à rotação do motor \cite{Fosalau2022}. Como o grupo motopropulsor é elétrico (motor \textit{brushless} acionado por ESC) com hélice de duas pás, a frequência fundamental de passagem das pás se relaciona à rotação do motor por meio da expressão $f = \frac{RPM}{60}\,n_{pás}$, com $n_{pás}=2$. A partir da relação entre a rotação obtida e as características do grupo motopropulsor, torna-se possível estimar a tração gerada pelo sistema a partir de calibração com testes estáticos; o processamento do sinal do microfone para extração dessa frequência é detalhado na Seção \ref{subsec:processamentoEstimacao}.
+
+% \textbf{Deflexão das superfícies} – Para a medição de deflexão, atendendo aos requisitos RF.01 e RF.06, foram avaliadas duas configurações: a utilização de um potenciômetro acoplado diretamente à superfície de controle e a aplicação de um sensor flexível. Optou-se pelo sensor flexível devido à sua maior facilidade de instalação e integração mecânica \cite{KarinaAssini}. Um sensor flexível é instalado em cada uma das três superfícies de controle (aileron, profundor e leme), cuja variação de resistência é convertida em tensão por meio de um divisor resistivo alimentado em 3,3 V com um resistor de $10\,k\Omega$; a calibração desse sinal em ângulo de deflexão é detalhada na Seção \ref{subsec:processamentoEstimacao}.
+
+% Após a definição dos sensores necessários para cada dado requisitado, analisaram-se as interfaces de comunicação de todos os dispositivos, com o objetivo de selecionar um microcontrolador capaz de suportar todas elas (Tabela \ref{Tab:Sensores/Dados/Interface}).
+
+% \begin{table}[H]
+% \centering
+% \caption{Sensores selecionados com as suas interfaces de comunicação.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sensor}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Dados}}                                                       & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Interfaces}} \\ \hline
+% \rowcolor[HTML]{FFFFFF} 
+% BMP390 \cite{bosch_bmp390_ds}                                                        & \begin{tabular}[c]{@{}l@{}}Temperatura\\ Pressão\\ Altitude\end{tabular}                                          & I2C \& SPI                                                       \\ \hline
+% MS5611 \cite{ms5611} & \begin{tabular}[c]{@{}l@{}}Temperatura\\ Pressão\\ Altitude\end{tabular}                                          & I2C \& SPI                                                       \\ \hline
+% \begin{tabular}[c]{@{}l@{}}MPS20N0040 \cite{sparkfun_pressure_sensor_ds}\end{tabular}  & \begin{tabular}[c]{@{}l@{}}Pressão dinâmica\\ Velocidade (ar)\end{tabular}                                             & Analógico                                                          \\ \hline
+% NEO M8N \cite{neom8n_ds}                                                      & \begin{tabular}[c]{@{}l@{}}Posição\\ Velocidade (solo)\end{tabular}                                               & UART, I2C \& SPI                                                 \\ \hline
+% ICM20948      \cite{icm20948_ds}                                                & \begin{tabular}[c]{@{}l@{}}Aceleração\\ Atitude\\ Velocidade instantânea\\ Rotação\\ Campo Magnético\end{tabular} & I2C \& SPI                                                       \\ \hline
+% BNO055    \cite{bno055_ds}                                                    & \begin{tabular}[c]{@{}l@{}}Aceleração\\ Atitude\\ Velocidade instantânea\\ Rotação\\ Campo Magnético\end{tabular} & I2C \& UART                                                      \\ \hline
+% Potenciômetro 10k  \cite{rv24af_ds}                                              & Angulo de ataque                                                                                                  & Analógico                                                        \\ \hline
+% Microfone  \cite{cmc5044pf-a_ds}                                                   & \begin{tabular}[c]{@{}l@{}}RPM\\ Estimativa Tração \end{tabular}                                                   & Analógico                                                        \\ \hline
+% Sensor Flexível \cite{flex22_ds}                                              & Deflexão das superfícies                                                                                          & Analógico                                                        \\ \hline
+% \end{tabular}}
+% \label{Tab:Sensores/Dados/Interface}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% \subsection{Microcontrolador}
+
+% A seleção dos microcontroladores visou cumprir o objetivo de cada subsistema, assim como suas sub-divisões como sensores e Wi-Fi, avaliou-se os microcontroladores dispostos na Tabela \ref{Tab:SelecProcessa}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Comparação entre microcontroladores.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|c|c|c|c|c|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\textbf{Característica}} &
+% \textbf{ESP32} &
+% \textbf{STM32H723VGT6} &
+% \multicolumn{1}{c|}{\textbf{Arduino Mega 2560 }} &
+% \multicolumn{1}{c|}{\textbf{STM32F446RET6}} &
+% \multicolumn{1}{c|}{\textbf{Raspberry Pi Pico }} \\ \hline
+
+% Arquitetura &
+% \begin{tabular}[c]{@{}c@{}}32-bits\\dual core\end{tabular} &
+% \begin{tabular}[c]{@{}c@{}}32-bits\\single core\end{tabular} &
+% \begin{tabular}[c]{@{}c@{}}8-bits\\single core\end{tabular} &
+% \begin{tabular}[c]{@{}c@{}}32-bits\\single core\end{tabular} &
+% \begin{tabular}[c]{@{}c@{}}32-bits\\dual core\end{tabular} \\ \hline
+
+% Velocidade de \textit{clock} &
+% 240MHz &
+% 550MHz &
+% 16MHz &
+% 180MHz &
+% 133MHz \\ \hline
+
+% \textit{RAM} &
+% 520Kb &
+% 564kb &
+% 8Kb &
+% 128Kb &
+% 264Kb \\ \hline
+
+% Memória flash &
+% 4Mb &
+% 1Mb &
+% 256Kb &
+% 512Kb &
+% 2Mb \\ \hline
+
+% ADC &
+% 12 bits &
+% 16 bits &
+% 10 bits &
+% 12 bits &
+% 12 bits \\ \hline
+
+% Suporte RTOS &
+% Médio &
+% Alto &
+% Não &
+% Alto &
+% Médio \\ \hline
+
+% Suporte comunidade &
+% Alto &
+% Médio &
+% Alto &
+% Médio &
+% Médio \\ \hline
+
+% Experiência &
+% Sim &
+% Não &
+% Sim &
+% Não &
+% Não \\ \hline
+
+% Preço [R\$] &
+% \textit{a preencher} &
+% \textit{a preencher} &
+% \textit{a preencher} &
+% \textit{a preencher} &
+% \textit{a preencher} \\ \hline
+
+
+% \end{tabular}}
+% \label{Tab:SelecProcessa}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% A partir dos microcontroladores listados, realizou-se os \textit{trade-off} das características apresentadas. De modo que seja possível realizar a interface garantindo uma boa velocidade de processamento para o DAPU, sendo selecionado o STM32H723VGT6 \cite{st_stm32h723zg_2025}.
+
+% Visando uma boa comunicação com os comandos do piloto e transmissão dos dados para os atuadores, utilizando \textit{hardware-driven} para o PWM. Selecionou-se o STM32F446RET6 \cite{st_stm32f446mc_2016}  para o GNCU.
+
+% Além disso visando um sistema com característica determinística, cumprindo com o requisito RP.02, ambos os chips STM32 selecionados apresentam alto suporte para RTOS. E uma customização do \textit{clock} para cada aplicação, facilitando integrações com os outros sistemas.
+
+% Já para o CGU optou-se pelo ESP32 C3 \cite{espressif_esp32c3_2025}  pela capacidade de comunicação Wi-Fi integrada ao chip, além de apresentar a interface necessária para sua comunicação com o DAPU.
+
+% Adicionalmente, verificou-se que os barramentos I2C do DAPU comportam a coexistência de todos os sensores selecionados sem conflito de endereçamento, e que o número de canais ADC disponíveis é suficiente para a leitura de todos os sensores analógicos do sistema (pressão diferencial amplificada, ângulo de ataque, estimativa de tração e deflexão das superfícies), restando ainda canais livres para expansões futuras.
+
+% A configuração final esta disposta na Tabela \ref{Tab:NucleoProcessador}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Microcontroladores para suas respectivos sistemas.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sistema}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Microcontrolador}} \\ \hline
+% \rowcolor[HTML]{FFFFFF} 
+% DAPU                              & STM32H723VGT6                                                             \\ \hline
+% GNCU                                            & STM32F446RET6                                                             \\ \hline
+% CGU                                      & ESP32 C3                                                                  \\ \hline
+% \end{tabular}
+% \label{Tab:NucleoProcessador}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% \subsection{\textit{Power Distribution Network}}
+% \label{subsec:PDN}
+
+% O Dimensionamento do PDN seguiu o seguinte fluxo de trabalho:
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Fluxograma do PDN.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/FluxoPDN.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:fluxoPDN}
+% \end{figure}
+
+% O consumo de corrente de cada componente conectado a rede está disposto na Tabela \ref{Tab:ConsumoCompo}. Vale ressaltar que estes valores se basearam nos \textit{datasheets} de cada componente.
+
+% \begin{table}[H]
+% \centering
+% \caption{Consumo dos componentes.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Componente}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Consumo Médio}} \\ \hline
+% STM32H723                                                            & 150 mA                                                               \\ \hline
+% STM32F446                                                            & 46 mA                                                              \\ \hline
+% ESP32 C3                                                               & 100 mA                                                               \\ \hline
+% BMP390                                                               & 59,2 mA                                                              \\ \hline
+% MS5611                                                               & 0,125 mA                                                             \\ \hline
+% HX711                                                                & 1,2 mA                                                               \\ \hline
+% NEO M8N                                                              & 25 mA                                                                \\ \hline
+% ICM20948                                                             & 3,11 mA                                                              \\ \hline
+% BNO055                                                               & 12,3 mA                                                              \\ \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \textbf{Total}                                                       & \textbf{396,935 mA}                                                  \\ \hline
+% \end{tabular}
+% \label{Tab:ConsumoCompo}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% Para dimensionar a bateria listou-se então os tipos das baterias e suas propriedades (Tabela \ref{tab:propBaterias}).
+
+% \begin{table}[H]
+% \centering
+% \caption{Propriedades diferentes químicos de baterias.}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|
+% >{\columncolor[HTML]{C0C0C0}}l |
+% >{\columncolor[HTML]{FFFFFF}}c |
+% >{\columncolor[HTML]{FFFFFF}}c |
+% >{\columncolor[HTML]{FFFFFF}}c |
+% >{\columncolor[HTML]{FFFFFF}}c |c|}
+% \hline
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Caracteristica}} & \cellcolor[HTML]{C0C0C0}\textbf{NiCd} & \cellcolor[HTML]{C0C0C0}\textbf{NiMh} & \cellcolor[HTML]{C0C0C0}\textbf{$LiFePO_4$} & \cellcolor[HTML]{C0C0C0}\textbf{Li-Po} & \cellcolor[HTML]{C0C0C0}\textbf{Li-Ion} \\ \hline
+% Energia específica {[}W/Kg{]}                                         & 150                                & ~250                                & ~200                                    & 100-265                                & 150-250                                 \\ \hline
+% Taxa de autodescarga {[}\% ao mês{]}                                  & 10                                 & 30                                 & 4.5                                        & 5                                    & 1-3                                     \\ \hline
+% Voltagem nominal {[}V{]}                                              & 1.2                                   & 1.2                                   & 3.2                                        & 3.7                                    & 3.7                                    \\ \hline
+% {\color[HTML]{000000} Durabilidade {[}ciclos{]}}                      & 2000                            & 180 - 2000                            & 2500 - 9000                                & 500 - 1000                              & 500 - 1000                               \\ \hline
+% Efeito memória                                                        & \cellcolor[HTML]{FFFFFF}Alto          & \cellcolor[HTML]{FFFFFF}Médio         & \cellcolor[HTML]{FFFFFF}Baixo              & \cellcolor[HTML]{FFFFFF}Baixo          & Baixo                                   \\ \hline
+% \end{tabular}}
+% \caption*{Fonte: Adaptado de \cite{wikipedia_commercial_battery}.}
+% \label{tab:propBaterias}
+% \end{table}
+
+% Com isso, optou-se pela utilização de duas baterias do tipo Li-ion 18650 (3000mAh) (Figura \ref{fig:bateria18650}) conectadas em série, atingindo uma tensão nominal de 7,4 V, sendo assim necessário regulador de tensão para a faixa de operação dos sensores e processadores de 3.3V.
+
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Bateria 18650.}
+%     \includegraphics[width=0.55\linewidth]{Imagens/metodologia/bateria-18650.jpg}
+%     \caption*{Fonte: \cite{usinainfo_18650_8759}.}
+%     \label{fig:bateria18650}
+% \end{figure}
+
+% Considerando o consumo total dos componentes obteve-se uma autonomia de 6,9h, sendo mais que suficiente para o sistema.
+
+% \textbf{Regulador de tensão}: Visando reduzir a tensão do sistema de 7.4V para 3.3V optou-se pela utilização de redutor de tensão linear.
+
+% Para os sistemas mais sensíveis a ruído como GPS e sinais analógicos optou-se pela utilização de LP2985 3.3V \cite{ti_lp2985_datasheet} que possui características dispostas na Tabela \ref{tab:regTensao}.
+
+% Já para o restante dos componentes menos sensíveis a ruído optou-se pelo uso do redutor AMS1117 3.3V \cite{ams1117_utd_datasheet}, suas características estão dispostas na Tabela \ref{tab:regTensao}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Características reguladores de tensão}
+% \begin{tabular}{|l|c|c|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Característica}} & \textbf{AMS1117 3.3V} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}\textbf{LP2985 3.3V}} \\ \hline
+% Tipo                                                                  & LDO Linear           & LDO Linear                                                         \\ \hline
+% \begin{tabular}[c]{@{}l@{}}Corrente maxima\\ de saída\end{tabular}    & 800mA - 1A           & 150mA                                                              \\ \hline
+% \textit{DropOut voltage}                                              & 1.1V                 & 280mV                                                              \\ \hline
+% Ruído                                                                 & Alto                 & Baixo                                                              \\ \hline
+% \end{tabular}
+% \caption*{Fonte: Adaptado dos \textit{datasheets} de cada regulador.}
+%     \label{tab:regTensao}
+% \end{table}
+
+% \textbf{Sistema de proteção}: Adicionou-se um sistema de proteção contra polaridade, e consumo alto de corrente, visando aumentar a confiabilidade do sistema (Figura \ref{fig:revPolarity}).
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Sistema de proteção de polaridade.}
+%     \includegraphics[width=0.6\linewidth]{Imagens/metodologia/ReversePolarity.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:revPolarity}
+% \end{figure}
+
+% O sistema conta com uma chave de três posições que seleciona o modo de operação da rede de energia: \textit{Desligado}, \textit{Ligado} e \textit{Warmup} (Figura \ref{fig:warmUP}). Nas posições \textit{Desligado} e \textit{Ligado}, a energia é simplesmente removida ou entregue integralmente ao sistema, sem qualquer sinalização adicional. Já na posição \textit{Warmup}, o sistema é energizado por completo, porém um circuito dedicado gera um sinal digital de \textit{warmup} em uma trilha dedicada. Um diodo inserido no caminho de alimentação da base garante que esse sinal seja gerado apenas quando a chave está na posição \textit{Warmup}, permanecendo inativo nas demais posições.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Sistema de seleção de modo de operação.}
+%     \includegraphics[width=0.6\linewidth]{Imagens/metodologia/WarmUPMode.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:warmUP}
+% \end{figure}
+
+% Esse sinal indica ao DAPU que o sistema se encontra em processo de aquecimento, permitindo que os sensores iniciem a aquisição de dados e a obtenção de \textit{fix} de posição antes do início efetivo da operação. Enquanto o sinal de \textit{warmup} estiver ativo, o DAPU envia ao GNCU um sinal de \textit{heartbeat} acompanhado de um comando de não operação, impedindo que a aeronave receba comandos de controle antes que o sistema esteja pronto; à CGU, por sua vez, são enviados o status dos sensores e o resultado do monitoramento de integridade do sistema (\textit{health management}). Uma vez concluído o aquecimento, o piloto seleciona manualmente a posição \textit{Ligado} na chave, retirando o sinal de \textit{warmup} e permitindo que o GNCU passe a operar normalmente, sujeito às demais condições de segurança discutidas na Seção \ref{subsec:maquinaEstados}.
+
+% O sistema conta ainda com uma barra de cinco \textit{LEDs} e um \textit{buzzer} para indicação visual e sonora do seu estado: um \textit{LED} piscante indica o funcionamento geral do sistema; os quatro \textit{LEDs} restantes indicam, de forma binária (aceso/apagado), respectivamente a conexão com o cartão SD, o status dos sensores, a comunicação com o GNCU e a comunicação com a CGU. O \textit{buzzer}, por sua vez, emite um sinal sonoro a cada 5 segundos de operação, fornecendo uma indicação auditiva adicional de que o sistema permanece em funcionamento.
+
+% \textbf{Dimensionamento das vias}: Visando o desenvolvimento futuro de uma PCB utilizou-se o software Saturn PCB para dimensionamento das vias de energia, sinais e planos de energia.
+
+% As características utilizadas da PCB estão dispostas na Tabela \ref{tab:propPCB}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Propriedades da PCB no fabricante.}
+% \label{tab:propPCB}
+% \begin{tabular}{|
+% >{\columncolor[HTML]{FFFFFF}}l |l|}
+% \hline
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Características}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Propriedade}} \\ \hline
+% Faces                                                                  & 2                                                                 \\ \hline
+% Material                                                               & FR-4                                                              \\ \hline
+% FR4-TG                                                                 & TG 150-160                                                        \\ \hline
+% Espessura                                                              & 1,6 mm                                                             \\ \hline
+% Espaçamento mínimo entre trilhas                                       & 6/6 mil                                                            \\ \hline
+% Tamanho mínimo furo                                                    & \cellcolor[HTML]{FFFFFF}0,3 mm                                     \\ \hline
+% Proteção UV                                                            & Não                                                               \\ \hline
+% Finalização da face                                                   & HASL com chumbo                                                   \\ \hline
+% Cobre                                                                  & 1 Oz                                                              \\ \hline
+% \end{tabular}
+% \caption*{Fonte: \cite{pcbway_quote2026}.}
+% \end{table}
+
+% A larguras das vias e planos estão dispostos na Tabela \ref{tab:DimenVias}.
+
+% \begin{table}[H]
+% \caption{Dimensionamento das vias da PCB.}
+% \label{tab:DimenVias}
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{|l|l|l|l|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Via}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Largura}} & \textbf{Corrente Máxima} & \textbf{Cobre} & \textbf{Dissipação de energia} & \textbf{Aumento de temperatura} \\ \hline
+% \cellcolor[HTML]{FFFFFF}3,3V                          & 0,5 mm                                                      & 1,2414 A             & 1 Oz           & 0,04614 W                      & 10 ºC                           \\ \hline
+% Sinal                                                      & 0,2 mm                                                     & 0,7063 A             & 1 Oz            & 0,03950 W                      & 10 ºC                           \\ \hline
+% \textit{Ground}                                                      & Plano                                                   & -             & 1 Oz            & -                      & -                          \\ \hline
+% \end{tabular}}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% \subsection{Circuito e PCB}
+
+
+% Com os componentes selecionados, utilizou-se o software KiCad para o desenvolvimento do diagrama elétrico e PCB, incluindo todas as conexões necessárias e a adição de conectores.
+
+% Assim, obteve-se o diagrama do conjunto de sensores apresentado na Figura \ref{fig:circuitoKiCAD}. O circuito completo pode ser visto no GitHub \cite{claro2026alaris}.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Diagrama elétrico do DAPU.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/DiagramaEletrico.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:circuitoKiCAD}
+% \end{figure}
+
+% A partir da criação do esquemático, desenvolveu-se a PCB seguindo o dimensionamento das vias calculado anteriormente.
+
+% A placa foi dividida em setores de acordo com a sua função a fim de facilitar montagem, desenvolvimento e manutenção (Figura \ref{fig:PCBdistribution}).
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Divisão da placa e seus sistemas.}
+%     \includegraphics[width=0.6\linewidth]{Imagens/metodologia/PCBDistribution.jpg}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:PCBdistribution}
+% \end{figure}
+
+% Obtendo assim a PCB final do sistema (Figura \ref{fig:PCBs}). Com dimensões de 86 mm por 99 mm, com duas camadas, cumprindo assim os requisitos RM.01 e RM.02.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{PCB Final.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/PCBs.jpg}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:PCBs}
+% \end{figure}
+
+% \section{Firmware}
+
+% O desenvolvimento do \textit{firmware} embarcado seguiu o fluxo de trabalho disposto na Figura \ref{fig:softwareFlux}. A implementação foi organizada de modo a garantir a leitura dos sensores, o processamento das estimativas de estado, a comunicação entre sistemas e a atuação sobre as superfícies de controle, mantendo a separação entre as unidades DAPU, GNCU e CGU.
+
+% \begin{figure}[H]
+%     \centering
+%     \caption{Fluxograma de desenvolvimento do \textit{firmware}.}
+%     \includegraphics[width=1\linewidth]{Imagens/metodologia/SoftwareFlux.png}
+%     \caption*{Fonte: Produzido pelo autor.}
+%     \label{fig:softwareFlux}
+% \end{figure}
+
+% Para a programação dos microcontroladores STM32, utilizou-se a plataforma \textit{STM32CubeIDE}, devido ao suporte nativo aos periféricos da família STM32, à geração inicial de código por meio do STM32CubeMX e à integração com o \textit{kernel} \textit{FreeRTOS}.
+
+% A gravação dos microcontroladores foi realizada por meio de interface TTL-UART, conectando-se individualmente a cada unidade de processamento durante a etapa de desenvolvimento. Para o ESP32 (CGU) utilizou-se o \textit{Visual Studio Code} com a extensão \textit{PlatformIO}, facilitando a compilação, gravação e organização das bibliotecas utilizadas.
+
+% Inicialmente, foram desenvolvidas rotinas individuais para validação de cada periférico e sensor, utilizando as interfaces de comunicação UART, I²C e SPI, bem como os periféricos ADC e PWM do microcontrolador, conforme as especificações dos respectivos \textit{datasheets}. Essa etapa permitiu validar isoladamente o funcionamento dos sensores e dos recursos de hardware antes da integração em uma arquitetura única de execução. Após essa validação, as rotinas foram integradas ao \textit{firmware} principal de cada sistema.
+
+% \subsection{Sistema Operacional de Tempo Real}
+
+% Com o objetivo de tornar o sistema mais determinístico e melhorar a organização das rotinas embarcadas, adotou-se uma arquitetura baseada em \textit{Real time operating system} (RTOS), utilizando o \textit{kernel} \textit{FreeRTOS} nos microcontroladores STM32 responsáveis pelo DAPU e GNCU.
+
+% A utilização do RTOS permite dividir o \textit{firmware} em tarefas independentes, cada uma associada a uma função específica do sistema, como leitura de sensores, estimação de estados, transmissão de dados, salvamento de informações e malha de controle. Permitindo maior previsibilidade temporal e melhor manutenção do código.
+
+% As principais funcionalidades utilizadas do \textit{FreeRTOS} foram:
+
+% \begin{itemize}
+%     \item \textbf{Tarefas prioritárias}: permitem que rotinas de maior prioridade interrompam tarefas menos críticas quando necessário;
+%     % \item \textbf{Filas}: troca de dados entre tarefas produtoras e consumidoras, reduzindo o acesso simultâneo a variáveis compartilhadas;
+%     \item \textbf{\textit{Mutexes}}: empregados para proteger estruturas de dados compartilhadas, como estados estimados da aeronave;
+%     % \item \textbf{\textit{Event Groups}}: utilizados para sinalização de eventos discretos, como conclusão de inicialização, obtenção de dados válidos ou detecção de falha;
+%     \item \textbf{\textit{Watchdog}}: empregado como camada adicional de segurança contra travamentos do \textit{firmware}.
+% \end{itemize}
+
+% Em ambas as unidades, as prioridades das tarefas seguem a convenção nativa do \textit{FreeRTOS}, na qual valores numéricos mais altos representam maior prioridade de execução. Como o DAPU e o GNCU desempenham funções distintas dentro da arquitetura GNC, o detalhamento das tarefas, frequências e prioridades de cada unidade é apresentado separadamente nas seções a seguir.
+
+% \subsection{Interface entre os Subsistemas}
+% \label{subsec:interfaceSubsistemas}
+
+% A comunicação entre os núcleos de processamento segue a arquitetura já apresentada na Figura \ref{fig:diagramaDoSistema} e as funções de cada subsistema descritas na Tabela \ref{tab:SubSis_Functions}. Detalha-se a seguir o protocolo e a responsabilidade de cada enlace de comunicação:
+
+% \begin{itemize}
+%     \item \textbf{Receptor RC $\rightarrow$ GNCU}: sinais PWM individuais
+%     por canal (aileron, profundor, leme, manete e canal de modo),
+%     capturados via periféricos de \textit{Input Capture} dos
+%     \textit{timers} do STM32F446, permitindo a medição direta da largura
+%     de pulso sem sobrecarga de CPU por \textit{polling};
+ 
+%     \item \textbf{GNCU $\leftrightarrow$ DAPU}: comunicação via SPI \textit{full-duplex}, na qual o DAPU envia a estimativa de estado da aeronave (atitude, altitude, velocidade e posição) e o GNCU retorna telemetria de baixo nível (estado dos atuadores, status do modo de voo);
+ 
+%     \item \textbf{DAPU $\leftrightarrow$ CGU}: comunicação via UART, responsável pelo tráfego de dados de missão e telemetria de alto nível, sem impacto na malha de controle;
+ 
+%     \item \textbf{GNCU $\rightarrow$ Atuadores}: geração de PWM via \textit{timers} em modo de saída, independente da carga de
+%     processamento das demais tarefas.
+% \end{itemize}
+
+% Essa separação reduz o acoplamento entre as funções críticas (DAPU $\leftrightarrow$ GNCU) e não críticas (DAPU/GNCU $\leftrightarrow$ CGU) do sistema: eventuais atrasos na transmissão de telemetria à CGU não comprometem a leitura dos sensores nem a geração dos comandos de controle.
+
+% \subsection{DAPU}
+
+% O DAPU foi projetado para operar com uma taxa base de amostragem de 5 ms, equivalente a 200 Hz. Essa frequência foi definida visando acompanhar adequadamente a dinâmica da aeronave e permitir a estimação de estados em tempo compatível com o comportamento esperado do veículo; o GNCU, por sua vez, opera segundo sua própria cadência de execução, apresentada na Seção \ref{subsec:gncuTarefas}.
+
+% Entretanto, nem todos os sensores possuem capacidade de operação a 200 Hz. Para esses casos, realizou-se um \textit{trade-off} entre frequência de amostragem, precisão da medida e função desempenhada pelo sensor dentro do sistema. A Tabela~\ref{Tab:Freqsensores} apresenta as frequências adotadas para cada sensor do DAPU.
+
+% \begin{table}[H]
+% \centering
+% \caption{Frequência de operação de cada sensor do DAPU.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\textbf{Sensor}} &
+% \multicolumn{1}{c|}{\textbf{Frequência de amostragem}} \\ \hline
+% BMP390 & 100 Hz \\ \hline
+% MS5611 & 50 Hz \\ \hline
+% MPS20N004 & 200 Hz \\ \hline
+% NEO M8N & 4 Hz \\ \hline
+% ICM20948 & 200 Hz \\ \hline
+% Microfone & 30 Hz \\ \hline
+% Sensor flexível & 200 Hz \\ \hline
+% \end{tabular}
+% \label{Tab:Freqsensores}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% As tarefas periódicas foram implementadas utilizando mecanismos de temporização do \textit{FreeRTOS}, de modo a manter períodos de execução constantes. Para sensores de menor frequência, os dados são atualizados conforme a disponibilidade de novas amostras, enquanto as tarefas de maior frequência continuam operando com os últimos valores válidos.
+
+% Com base na criticidade de cada rotina, definiram-se as prioridades das tarefas do DAPU, conforme apresentado na Tabela~\ref{Tab:RTOSPrioridadesDAPU}. A prioridade de salvamento foi definida como superior à de transmissão, de modo que a comunicação externa não comprometa a integridade dos dados coletados. A tarefa de \textit{health management} (Seção \ref{subsec:healthManagement}) foi posicionada em prioridade intermediária, abaixo dos sensores mais críticos à guiagem de voo, porém acima dos sensores auxiliares, garantindo que eventuais falhas sejam detectadas sem comprometer a amostragem das grandezas mais críticas.
+
+% \begin{table}[H]
+% \centering
+% \caption{Prioridade de cada tarefa do DAPU no RTOS.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\textbf{Tarefa}} &
+% \multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+% Salvar dado & 11 \\ \hline
+% Transmitir dado & 10 \\ \hline
+% GPS (NEO M8N) & 9 \\ \hline
+% IMU (ICM20948) & 8 \\ \hline
+% Pitot (MPS20N0040D) & 7 \\ \hline
+% Altímetro (BMP390) & 6 \\ \hline
+% Altímetro (MS5611) & 5 \\ \hline
+% \textit{Health Management} & 4 \\ \hline
+% AOA & 3 \\ \hline
+% RPM & 2 \\ \hline
+% Deflexão das superfícies & 1 \\ \hline
+% \end{tabular}
+% \label{Tab:RTOSPrioridadesDAPU}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% \subsubsection{Processamento e Estimação de Estados}
+% \label{subsec:processamentoEstimacao}
+
+% Os dados provenientes dos sensores são processados antes de serem utilizados pelas rotinas de controle e telemetria. Para reduzir ruídos de medição e melhorar a confiabilidade das estimativas, foram aplicadas técnicas de filtragem, incluindo filtros de Kalman e fusão de sensores.
+
+% A estimativa de atitude é obtida a partir da combinação das medidas inerciais, considerando acelerômetro, giroscópio e magnetômetro. Essa fusão permite estimar os ângulos de atitude da aeronave com maior robustez do que seria possível utilizando apenas um sensor isolado.
+
+% A altitude é estimada por meio da fusão das leituras dos dois sensores barométricos selecionados (BMP390 e MS5611) através de um filtro de Kalman. Como os dois sensores operam em frequências de amostragem distintas 100 Hz e 50 Hz, respectivamente (Tabela \ref{Tab:Freqsensores}), essa arquitetura aproveita a maior taxa de atualização do BMP390 para reduzir a latência da estimativa, enquanto a maior precisão do MS5611 (Tabela \ref{Tab:SensoresPress}) é utilizada para corrigir o viés acumulado, resultando em uma estimativa de altitude mais robusta do que a obtida por qualquer um dos sensores isoladamente.
+
+% Já a estimativa de velocidade e posição considera as informações provenientes do GPS, do tubo de Pitot e das medições inerciais. Dessa forma, sensores de baixa frequência, como o GPS, são complementados por sensores de maior frequência, como a unidade inercial e o sensor de pressão diferencial.
+
+% Os coeficientes dos filtros foram definidos com base no comportamento em regime permanente dos sensores e na resposta observada durante os testes individuais. Essa abordagem permite ajustar o nível de confiança atribuído a cada medida, considerando tanto o ruído característico do sensor quanto sua frequência de atualização.
+
+% Além da estimação de estados propriamente dita, o DAPU realiza o processamento de dois outros sinais analógicos que exigem interpretação antes de seu uso: a estimativa de rotação do motor e a deflexão das superfícies de controle.
+
+% A rotação do motor é obtida a partir do sinal do microfone eletreto (Seção \ref{subsec:sensores}), cuja frequência é proporcional à passagem das pás da hélice. A extração dessa frequência é realizada por amostragem do sinal em alta taxa via DMA, durante uma janela de poucos milissegundos, seguida da aplicação de uma FFT para identificação do pico espectral correspondente. A frequência de 30 Hz apresentada na Tabela \ref{Tab:Freqsensores} corresponde, portanto, à taxa de atualização do valor de RPM resultante desse processamento, e não à taxa de amostragem bruta do sinal de áudio.
+
+% Já a deflexão das superfícies de controle é obtida a partir da tensão lida no divisor resistivo de cada sensor flexível (Seção \ref{subsec:sensores}). Como a resposta desse sensor é não linear e assimétrica em relação ao sentido de deflexão, a calibração é realizada antes de cada voo por meio de duas funções de mapeamento independentes, uma para deflexões positivas e outra para deflexões negativas, relacionando a tensão lida ao ângulo de deflexão da superfície correspondente.
+
+% \subsubsection{Máquina de Estados}
+% \label{subsec:maquinaEstados}
+
+% Além da seleção física de modo de operação apresentada na seção de hardware, o \textit{firmware} do DAPU implementa uma máquina de estados responsável por organizar o comportamento do sistema ao longo da missão. Essa estrutura permite controlar a inicialização, a verificação dos sensores, o aquecimento do sistema, a operação nominal e o tratamento de falhas.
+
+% Os principais estados definidos são:
+
+% \begin{itemize}
+%     \item \textit{\textbf{Boot}}: inicialização dos periféricos e configuração inicial do microcontrolador;
+%     \item \textit{\textbf{Self-Test}}: verificação da comunicação com sensores e periféricos críticos;
+%     \item \textit{\textbf{Warmup}}: etapa de estabilização e aquecimento dos sensores, especialmente do módulo GPS;
+%     \item \textit{\textbf{Armed}}: sistema validado e pronto para operação;
+%     \item \textit{\textbf{Flight}}: operação nominal, com aquisição de dados, estimação de estados e execução das rotinas de controle;
+%     \item \textit{\textbf{Failsafe}}: estado acionado em caso de falha crítica, perda de comunicação ou comportamento inesperado do sistema.
+% \end{itemize}
+
+% A máquina de estados é executada por uma tarefa supervisora dedicada do DAPU. As demais tarefas não alteram diretamente o estado global do sistema; elas apenas sinalizam eventos, como falha de sensor, conclusão de inicialização ou disponibilidade de dados válidos. A tarefa supervisora interpreta esses eventos e realiza as transições necessárias.
+
+% Essa abordagem reduz a possibilidade de condições de corrida e centraliza a lógica de decisão do sistema. Além disso, o \textit{watchdog} independente é atualizado periodicamente pela tarefa supervisora. Caso essa atualização deixe de ocorrer dentro do intervalo configurado, o microcontrolador é reinicializado, fornecendo uma camada adicional de proteção contra travamentos.
+
+% Cabe destacar que essa máquina de estados rege o comportamento global do sistema, mas não o modo de controle da aeronave: a decisão entre operação manual e autônoma, dentro do estado \textit{Flight}, é feita pelo piloto e gerenciada de forma independente pelo GNCU (Seção \ref{subsec:modoManualAutonomo}). A comunicação entre as duas máquinas ocorre em uma única via: caso o DAPU transite para o estado \textit{Failsafe}, esse evento é sinalizado ao GNCU pelo enlace SPI (Seção \ref{subsec:interfaceSubsistemas}), que força o retorno ao modo manual independentemente da seleção do piloto.
+
+% \subsubsection{\textit{Health Management}}
+% \label{subsec:healthManagement}
+
+% Complementarmente à máquina de estados, e atendendo ao requisito RF.08, o DAPU implementa uma rotina de \textit{health management} responsável por monitorar continuamente a integridade dos subsistemas, sinalizando eventos de falha à tarefa supervisora descrita na seção anterior. Enquanto o \textit{watchdog} protege o sistema contra travamentos do \textit{firmware}, o \textit{health management} atua em um nível acima, verificando se os subsistemas seguem operando dentro do comportamento esperado mesmo com o \textit{firmware} em execução normal.
+
+% O monitoramento abrange três categorias de verificação:
+
+% \begin{itemize}
+%     \item \textbf{Comunicação dos sensores}: cada sensor é verificado quanto à ocorrência de \textit{timeout} de comunicação (ausência de resposta dentro do intervalo esperado) e, quando aplicável, quanto à validade do dado recebido (por exemplo, verificação de \textit{checksum} das mensagens);
+%     \item \textbf{Prazos das tarefas do RTOS}: o cumprimento dos períodos de execução de cada tarefa do DAPU (Tabela \ref{Tab:RTOSPrioridadesDAPU}) é monitorado, permitindo identificar estouros de prazo que possam comprometer o desempenho do sistema;
+%     \item \textbf{Tensão de alimentação}: a tensão da bateria é monitorada por meio de um divisor resistivo lido pelo ADC, sinalizando condições de sub ou sobretensão que possam comprometer a operação do sistema.
+% \end{itemize}
+
+% Para evitar que ruídos ou variações transitórias disparem ações desnecessárias, uma falha só é considerada válida após ser detectada em, no mínimo, duas verificações consecutivas, mesma filosofia de \textit{debounce} adotada para o chaveamento entre os modos manual e autônomo (Seção \ref{subsec:modoManualAutonomo}).
+
+% Uma vez confirmada, cada falha é classificada em duas categorias de severidade:
+
+% \begin{itemize}
+%     \item \textbf{Falhas críticas}: falhas de comunicação com sensores essenciais à estimativa de atitude, posição e altitude (GPS, IMUs e barômetros), estouros de prazo em tarefas de controle ou tensão de alimentação fora da faixa aceitável. A confirmação de uma falha crítica aciona imediatamente o estado de \textit{Failsafe};
+%     \item \textbf{Falhas não críticas}: falhas em sensores auxiliares (AOA, estimativa de tração e deflexão das superfícies), que não comprometem a guiagem da aeronave. Essas falhas são apenas sinalizadas, por meio do LED de status dos sensores e reportadas à CGU, sem acionar o \textit{Failsafe}.
+% \end{itemize}
+
+% Durante os estados de \textit{Self-Test} e \textit{Warmup}, o \textit{health management} realiza uma verificação mais abrangente de todos os subsistemas antes de permitir a transição para o estado \textit{Armed}, sendo essa validação também refletida no LED de status dos sensores, que só se acende após a confirmação de que todos os testes foram concluídos com sucesso. Já durante o estado \textit{Flight}, o monitoramento permanece ativo em segundo plano de forma mais leve, com o objetivo de identificar falhas ao longo do voo; nesse estado, o LED de status dos sensores reflete simplesmente se todos os sensores seguem inicializados e recebendo dados.
+
+% \subsection{GNCU}
+% \label{subsec:gncuTarefas}
+
+% No GNCU, cada malha e submalha da arquitetura de guiagem e controle apresentada no capítulo \ref{chap:guiagemEcontrole} é implementada como uma tarefa independente: o \textit{Path Manager} e o \textit{Path Following} compõem o nível \textit{High Level}, responsável por gerar as referências de curso ($\chi_c$) e altitude ($h_c$); já o nível \textit{Low Level} é composto pelas malhas interna e externa do \textit{autopilot} de cada eixo (rolamento/curso via aileron, arfagem/altitude via profundor) e pela malha de coordenação de curva via leme, sendo a atuação sobre a superfície de controle correspondente realizada ao final da execução de cada malha interna.
+
+% Como os servos das superfícies de controle operam com um período de PWM padrão de 50 Hz, executar as malhas internas a uma taxa superior não seria representativo, uma vez que o comando não seria efetivamente aplicado ao atuador antes do próximo quadro de PWM; assim, as malhas internas e, por questões de segurança, também a frequência de leitura do receptor RC. Já as malhas externas e o nível \textit{High Level} de guiagem operam a uma taxa aproximadamente 10 vezes menor (5 Hz), respeitando o princípio de separação de bandas adotado (Capítulo \ref{chap:guiagemEcontrole}). A leitura do IMU de \textit{backup} (BNO055) segue sua taxa nativa de 100 Hz, independente da cadência das malhas de controle, de modo a manter a redundância de atitude sempre atualizada.
+
+% \begin{table}[H]
+% \centering
+% \caption{Prioridade de cada tarefa do GNCU no RTOS.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\textbf{Tarefa}} &
+% \multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+% Coletar dados (receptor RC) & 10 \\ \hline
+% IMU \textit{backup} (BNO055) & 9 \\ \hline
+% Profundor - malha interna ($\theta$) & 8 \\ \hline
+% Aileron - malha interna ($\phi$) & 7 \\ \hline
+% Leme - malha de coordenação ($\beta$)& 6 \\ \hline
+% Profundor - malha externa ($h$) & 5 \\ \hline
+% Aileron - malha externa ($\chi$) & 4 \\ \hline
+% \textit{Path Following} & 3 \\ \hline
+% \textit{Path Manager} & 2 \\ \hline
+% Transmitir dado & 1 \\ \hline
+% \end{tabular}
+% \label{Tab:RTOSPrioridadesGNCU}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% \subsubsection{Modo Manual e Modo Autônomo}
+% \label{subsec:modoManualAutonomo}
+
+% A lógica de controle foi desenvolvida considerando dois modos principais de operação: modo manual e modo autônomo. No modo manual, os comandos provenientes do receptor de rádio controle são repassados diretamente aos atuadores, permitindo que o piloto mantenha controle total da aeronave.
+
+% No modo autônomo, os comandos das superfícies de controle são calculados pelo GNCU a partir das estimativas de estado fornecidas pelo DAPU e das referências geradas pelo sistema de guiagem. Nesse caso, as malhas de controle atuam sobre profundor, aileron e leme, de acordo com a arquitetura de controle definida anteriormente.
+
+% Por questões de segurança, o modo autônomo não é ativado por padrão durante a inicialização. A ativação depende de um comando explícito do piloto por meio de um canal dedicado do rádio controle. Além disso, a leitura do comando manual permanece ativa mesmo durante a operação autônoma, permitindo a retomada do controle manual a qualquer instante.
+
+% A transição para o modo autônomo é realizada apenas após a confirmação de múltiplas leituras consecutivas do canal de modo, evitando ativações indevidas causadas por ruídos ou variações transitórias no sinal PWM. Já a transição de volta para o modo manual é imediata, uma vez que representa uma ação de segurança e deve ocorrer com a menor latência possível. Essa transição imediata também é forçada pelo DAPU em caso de \textit{Failsafe} (Seção \ref{subsec:maquinaEstados}), independentemente da seleção do piloto, garantindo que uma falha crítica no sistema de estimação de estados não deixe a aeronave em modo autônomo sem supervisão adequada.
+
+% \subsection{CGU}
+
+% A CGU (\textit{Communication Gateway Unit}) atua como interface de comunicação e supervisão externa do sistema, sendo responsável pela transmissão da telemetria e pelo recebimento de parâmetros e comandos básicos enviados pelo usuário (Tabela \ref{tab:SubSis_Functions}). Diferentemente do DAPU e do GNCU, a CGU não participa da malha de controle em tempo real, de modo que eventuais atrasos em sua execução não comprometem a guiagem da aeronave (Seção \ref{subsec:interfaceSubsistemas}).
+
+% A comunicação com o DAPU ocorre via UART, por meio da qual a CGU recebe os dados de telemetria de alto nível da aeronave (posição, altitude, atitude e velocidade), além do status dos sensores e do resultado do monitoramento de integridade do sistema (\textit{health management}), utilizados, por exemplo, para indicar ao usuário o andamento do processo de \textit{warmup} antes do voo (Seção \ref{subsec:PDN}).
+
+% O \textit{firmware} da CGU é estruturado em três tarefas (Tabela \ref{Tab:RTOSPrioridadesCGU}): a coleta dos dados recebidos do DAPU, a disponibilização de um servidor web (\textit{WebServer}) para consulta da telemetria pelo usuário, e a transmissão desses dados via Wi-Fi.
+
+% \begin{table}[H]
+% \centering
+% \caption{Prioridade de cada tarefa da CGU no RTOS.}
+% \begin{tabular}{|l|l|}
+% \hline
+% \rowcolor[HTML]{C0C0C0} 
+% \multicolumn{1}{|c|}{\textbf{Tarefa}} &
+% \multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+% Coletar dados & 3 \\ \hline
+% WebServer & 2 \\ \hline
+% Transmitir dado & 1 \\ \hline
+% \end{tabular}
+% \label{Tab:RTOSPrioridadesCGU}
+% \caption*{Fonte: Produzido pelo autor.}
+% \end{table}
+
+% Como a CGU não executa nenhuma rotina crítica à guiagem da aeronave, o uso do RTOS nessa unidade tem como principal objetivo organizar a concorrência entre a coleta de dados e o atendimento às requisições do servidor web, e não garantir determinismo temporal estrito como nas demais unidades. A estrutura de dados de telemetria e a interface do servidor web ainda não foram completamente detalhadas neste trabalho, sendo apontadas como oportunidade de desenvolvimento futuro.
+
+% \subsection{Verificação e Validação}
+
+% A verificação do \textit{firmware} foi conduzida de forma incremental. Inicialmente, cada sensor e periférico foi testado individualmente, validando a comunicação e a coerência dos dados obtidos. Em seguida, as rotinas foram integradas ao sistema com RTOS, avaliando-se a execução simultânea das tarefas e a comunicação entre subsistemas.
+
+% Durante os testes, foram observados três aspectos principais: a consistência dos dados medidos, o cumprimento das frequências de amostragem definidas e a resposta do sistema diante de falhas simuladas. Para sensores críticos, a desconexão ou ausência de resposta deve ser identificada pela tarefa supervisora, permitindo a transição para um estado seguro.
+
+% Também foram avaliadas as rotinas de chaveamento entre modo manual e modo autônomo, verificando se o piloto mantém a capacidade de retomar o controle da aeronave a qualquer momento. Essa validação é essencial para garantir que a autonomia seja implementada de forma incremental e reversível, sem comprometer a segurança da operação.
+
+% Dessa forma, o \textit{firmware} desenvolvido permite a aquisição dos dados dos sensores, a filtragem e fusão das medidas, a estimativa dos estados da aeronave, a comunicação entre subsistemas e a geração de comandos para controle, compondo a base embarcada necessária para a operação do sistema proposto.
+
+
+\chapter{Sistema Embarcado}
+
+Visando a implementação do projeto em uma aeronave real, tornou-se necessário o desenvolvimento de um sistema embarcado capaz de: coletar dados, processá-los, estimar trajetória e enviar os comandos para aeronave.
+
+Visando um desenvolvimento satisfatório, adotou-se o fluxograma de trabalho apresentado na Figura \ref{fig:fluxEmbarcado}.
+
+\begin{figure}[H]
+    \centering
+    \caption{Fluxograma do desenvolvimento do embarcado.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/FluxoEmbarcado.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:fluxEmbarcado}
+\end{figure}
+
+\section{Requisitos de projeto}
+
+A fim de alcançar os objetivos do projeto, definiu-se os requisitos para serem utilizados no desenvolvimento do sistema embarcado, dispostos na Tabela \ref{tab:requisitosDoEmbarcado}.
+
+\begin{table}[H]
+\centering
+\caption{Requisitos do sistema embarcado.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Categoria}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Identificação}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Requisito}}               \\ \hline
+                                                                 & RF.01                                                               & O sistema deve ser capaz de adquirir dados de sensores analógicos e digitais. \\ \cline{2-3} 
+                                                                 & RF.02                                                               & O sistema deve processar os dados em tempo real.                              \\ \cline{2-3} 
+                                                                 & RF.03                                                               & O sistema deve estimar o estado da aeronave (posição, velocidade, atitude).   \\ \cline{2-3} 
+                                                                 & RF.04                                                               & O sistema deve armazenar os dados de voo.                                     \\ \cline{2-3} 
+                                                                 & RF.05                                                               & O sistema deve receber comandos do piloto.                                    \\ \cline{2-3} 
+                                                                 & RF.06                                                               & O sistema deve gerar sinais de controle para atuadores.                       \\ \cline{2-3} 
+                                                                 & RF.07                                                               & O sistema deve operar de forma distribuída em múltiplos subsistemas.          \\ \cline{2-3}
+\multirow{-8}{*}{Funcional}                                      & RF.08                                                               & O sistema deve monitorar continuamente a integridade dos seus subsistemas (\textit{health management}). \\ \hline
+                                                                 & RP.01                                                               & O sistema deve operar com taxa de amostragem  de 200 Hz.                \\ \cline{2-3} 
+                                                                 & RP.02                                                               & O sistema deve garantir execução determinística (uso de RTOS).                \\ \cline{2-3} 
+                                                                 & RP.03                                                               & A transmissão de dados não deve causar perda de dados.                        \\ \cline{2-3} 
+                                                                 & RP.04                                                               & A transmissão não deve interferir no controle da aeronave.                    \\ \cline{2-3}
+\multirow{-5}{*}{Performance}                                    & RP.05                                                               & As transições entre modo manual e autônomo devem ser seguras e reversíveis a qualquer instante. \\ \hline
+                                                                 & RC.01                                                               & O sistema deve continuar operando em caso de falha de comunicação.            \\ \cline{2-3} 
+                                                                 & RC.02                                                               & Funções críticas devem ser implementadas em hardware sempre que possível.     \\ \cline{2-3}
+                                                                 & RC.03                                                               & O piloto deve ser capaz de retomar o controle manual da aeronave a qualquer momento, com latência mínima. \\ \cline{2-3}
+\multirow{-4}{*}{Confiabilidade}                                 & RC.04                                                               & Sensores críticos para estimativa de atitude devem possuir redundância. \\ \hline
+                                                                 & RA.01                                                               & O sistema deve operar corretamente entre $10\,^\circ C$ e $47\,^\circ C$ (temperatura média de $28,4\,^\circ C$). \\ \cline{2-3}
+                                                                 & RA.02                                                               & O sistema deve operar corretamente para velocidades relativas entre $-6\,m/s$ e $20\,m/s$. \\ \cline{2-3}
+                                                                 & RA.03                                                               & O sistema deve operar corretamente entre $0\,m$ e $1000\,m$ de altitude. \\ \cline{2-3}
+\multirow{-4}{*}{Ambiental}                                      & RA.04                                                               & O sistema deve suportar fator de carga entre $-3g$ e $3g$. \\ \hline
+                                                                 & RM.01                                                               & A PCB deve ter no máximo duas camadas.                                        \\ \cline{2-3} 
+\multirow{-2}{*}{Manufatura}                                     & RM.02                                                               & As dimensões máximas do sistemas deve ser 100mm x 100mm.                      \\ \hline
+\end{tabular}}
+\caption*{Fonte: Próprio Autor.}
+\label{tab:requisitosDoEmbarcado}
+\end{table}
+
+Os requisitos ambientais (RA.01 a RA.04) foram definidos a partir de dados de voo coletados pela equipe ao longo dos últimos três anos, aos quais aplicou-se um fator de segurança para garantir robustez do sistema frente a condições adversas. A faixa de temperatura considera as medições internas da fuselagem; a faixa de velocidade relativa contempla tanto a condição de cruzeiro quanto rajadas de vento de través durante a partida do motor, com a aeronave ainda parada; a faixa de altitude parte da condição de operação em São Bernardo do Campo - SP, porem com um teto abrangente para evitar problemas relacionados a diferentes altitudes densidade; e o fator de carga é derivado dos limites do diagrama V-n fornecido pela equipe.
+
+\section{Hardware}
+
+Visando cumprir os requisitos RF.01, RF.04 a RF.07, idealizou-se o sistema (Figura \ref{fig:diagramaDoSistema}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Diagrama do sistema embarcado.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/SubSistemas.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:diagramaDoSistema}
+\end{figure}
+
+O sistema apresentado a cima, foi estruturado de modo que as tarefas sejam distribuídas entres diversos núcleos de processamento, garantindo uma melhor confiabilidade nos processos sendo executados.
+
+Para este relatório será referenciado a cada sub-sistema assumindo as funções dispostas na Tabela \ref{tab:SubSis_Functions}.
+
+\begin{table}[H]
+\centering
+\caption{Sub-sistemas e suas respectivas funções.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sub-Sistema}}                             & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Função}}                                                                                                                                    \\ \hline
+\textit{\begin{tabular}[c]{@{}l@{}}Power Distribution Network\\ (PDN)\end{tabular}}            & \begin{tabular}[c]{@{}l@{}}Gerenciamento da bateria\\ Regular tensão\\ Estabilização da tensão\end{tabular}                                                                                     \\ \hline
+\textit{\begin{tabular}[c]{@{}l@{}}Data Acquisition \& Processing Unit\\ (DAPU)\end{tabular}}  & \begin{tabular}[c]{@{}l@{}}Coleta de dados (Analógiocos e Digitais)\\ Processamento/Estimativa de estados\\ Salvamento dos dados\\ Organização dos dados na rede\\ \textit{Health Menagement}\end{tabular} \\ \hline
+\textit{\begin{tabular}[c]{@{}l@{}}Guidence Navegation \& Controll Unit\\ (GNCU)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Identificação dos comandos do piloto\\ Envio dos sinais para os atuadores\\ GNC da aeronave\end{tabular}                                                       \\ \hline
+\textit{\begin{tabular}[c]{@{}l@{}}Communication Gateway Unit\\ (CGU)\end{tabular}}            & \begin{tabular}[c]{@{}l@{}}Transmissão dos dados\\ Receber parâmetros e comando básicos\end{tabular}                                                                                            \\ \hline
+\end{tabular}
+\caption*{Fonte: Produzido pelo autor.}
+\label{tab:SubSis_Functions}
+\end{table}
+
+Conforme apresentado na Tabela \ref{tab:SubSis_Functions}, o GNCU depende das estimativas de estado calculadas pelo DAPU, recebidas por meio do SPI entre as duas unidades, para executar as malhas de controle. Essa dependência representa um ponto único de falha: caso o enlace de comunicação seja interrompido ou o DAPU apresente alguma falha de processamento, o GNCU perderia sua única referência de atitude, comprometendo diretamente a referência da aeronave no exato momento em que o controle automático mais precisaria dela.
+
+Para eliminar esse ponto único de falha, atendendo aos requisitos RC.02 e RC.04, o GNCU deve possuir um sensor de atitude próprio, integrado ao seu \textit{hardware} e independente da estimativa fornecida pelo DAPU. Dessa forma, em caso de falha de comunicação (RC.01), o GNCU é capaz de transitar para um modo de operação degradado, mantendo uma estimativa mínima de atitude suficiente para estabilizar a aeronave até a retomada do controle manual pelo piloto (RC.03) ou a ativação do estado de \textit{Failsafe}, discutido na Seção \ref{subsec:maquinaEstados}.
+
+Como o GNCU já é responsável pela execução das malhas de controle em tempo real, a seleção desse sensor de \textit{backup} prioriza soluções com fusão sensorial embarcada, de modo a obter a estimativa de atitude diretamente no \textit{hardware} sem adicionar custo computacional relevante à unidade; a escolha do componente específico é detalhada na Seção \ref{subsec:sensores}.
+
+Além disso, todo o sistema de identificação/envio dos comando da aeronave deve ser baseada em \textit{hardware}, visando redução do custo computacional aumentando confiabilidade e indo de acordo com RC.02.
+
+\subsection{Sensores}
+\label{subsec:sensores}
+ Para a seleção de todos os sensores listou-se os sensores comerciais para cada dado requerido, analisando custo, precisão, taxa de amostragem e resolução.
+
+Dentre os dados adquiridos pelo sistema, a altitude em relação ao solo e a atitude são os parâmetros mais críticos para o presente trabalho: o objetivo da aeronave é manter-se a uma distância determinada do solo para o aproveitamento do efeito solo, de modo que a qualidade dessa estimativa impacta diretamente o desempenho da malha de controle correspondente. Cabe ressaltar que o escopo deste capítulo está restrito ao desenvolvimento do sistema embarcado responsável por disponibilizar essa medida, sendo o projeto da malha de controle tratado no capítulo \ref{chap:guiagemEcontrole}.
+
+ \textbf{Altitude} - para medição da altitude em relação ao solo, atendendo aos requisitos RF.03 e RA.03, optou-se por sensores baseados em pressão atmosférica (Tabela \ref{Tab:SensoresPress}).
+
+ \begin{table}[H]
+ \centering
+ \caption{Sensores de pressão analisados.}
+ \resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\rowcolor[HTML]{BFBFBF} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{BFBFBF}\textbf{Sensor}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Precisão}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Resolução Altitude}}  & \multicolumn{1}{c|}{\cellcolor[HTML]{BFBFBF}\textbf{Amostragem}} & \cellcolor[HTML]{C0C0C0}\textbf{Preço {[}R\${]}} \\ \hline
+\cellcolor[HTML]{FFFFFF}\textbf{Bosch BMP390}                 & \cellcolor[HTML]{FFFFFF}±0,03 hPa                                       & \cellcolor[HTML]{FFFFFF}$\sim$±0,25 m                                                                           & \cellcolor[HTML]{FFFFFF}200 Hz                               & $\sim$40,00                                      \\ \hline
+\cellcolor[HTML]{FFFFFF}\textbf{Infineon DPS310}              & ±0,05 hPa                                                               & $\sim$±0,5 m                                                                                                                             & 128 Hz                                                       & $\sim$80,00                                      \\ \hline
+\textbf{TE MS5611}                                            & ±0,012 hPa                                                               & $\sim$±0,1 m                                                                                                                       & 120 Hz                                                      & $\sim$25,00                                      \\ \hline
+\textbf{TDK ICP-10125}                                        & ±0,04 hPa                                                              & $\sim$±0,3 m                                                                                                                           & 200 Hz                                                         & $\sim$23,00                                      \\ \hline
+\end{tabular}}
+\label{Tab:SensoresPress}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+Realizou-se o \textit{trade-off} dos requisitos supracitados, selecionando os sensores BMP390 e MS5611; a combinação de ambos permite explorar suas diferentes frequências de amostragem por meio de fusão sensorial, conforme detalhado na Seção \ref{subsec:processamentoEstimacao}.
+
+
+\textbf{Temperatura} - Para seleção dos sensores de temperatura, atendendo ao requisito RA.01, deu-se prioridade ao sensores já selecionados para medição de pressão uma vez que também possuem capacidade de fazer a aquisição da temperatura.
+
+Optando, pela não adição de um sensor adicional uma vez que as suas especificações se demonstraram suficientes para o projeto (Tabela \ref{Tab:SensoresTemp}).
+
+\begin{table}[H]
+\centering
+\caption{Sensores de temperatura analisados.}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sensor}} & \textbf{Precisão}               & \textbf{Faixa Típica} & \textbf{Amostragem} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}\textbf{Preço {[}R\${]}}} \\ \hline
+\cellcolor[HTML]{FFFFFF}BMP390               & \cellcolor[HTML]{FFFFFF}±0.5 °C & –40 a +85 °C          & 200 Hz              & $\sim$40,00                                                           \\ \hline
+DS18B20                                              & ±0.5 °C                         & –55 a +125 °C         & 10Hz                & $\sim$6,00                                                            \\ \hline
+MS5611                                       & ±1 °C                           & –40 a +85 °C          & 120 Hz              & $\sim$25,00                                                           \\ \hline
+TMP117                                               & ±0.1 °C                         & –55 a +150 °C         & 8 Hz                & $\sim$80,00                                                           \\ \hline
+\end{tabular}
+\label{Tab:SensoresTemp}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+ A estimativa de velocidade, posição e atitude da aeronave, atendendo ao requisito RF.03, é obtida a partir de três categorias de sensores: pressão diferencial (tubo de pitot), GNSS e \textit{Inertial Measurement Unit} (IMU). A forma como esses sensores são combinados é detalhada na Seção \ref{subsec:processamentoEstimacao}.
+
+\textbf{Pressão Diferencial} - Para a medição da velocidade relativa por meio da pressão dinâmica, comparam-se os sensores comerciais dispostos na Tabela \ref{Tab:SensoresPressaoDIF}.
+
+ \begin{table}[H]
+\centering
+\caption{Sensores de pressão dinâmica analisados.}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\textbf{Sensor} & \textbf{Range} & \textbf{Precisão} & \textbf{Amostragem} \\ \hline
+
+% NXP MPXV7002DP 
+% & ±2 kPa
+% & ±2.5–5\% 
+% & Analógico \\ \hline
+
+% XGZP6897A 
+% & ±5 kPa
+% & ±1.5\%  
+% & Analógico \\ \hline
+
+MS4525DO 
+& ±7 kPa 
+& ±1\% 
+& 500–2000 Hz \\ \hline
+
+MPS20N0040D
+& 0–40 kPa 
+& ±10\%
+& Analógico \\ \hline
+
+\end{tabular}
+\label{Tab:SensoresPressaoDIF}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+Vale ressaltar que a pressão dinâmica será coletada por meio de um tubo de pitot (Figura \ref{fig:tubo pitot}) conectado ao sensor por meio de mangueiras. Além disso, o tubo de pitot será instalado no Bordo de Ataque da aeronave, distante da \textit{skin} de modo a minimizar efeitos de interferência com a própria aeronave.
+
+\begin{figure}[H]
+    \centering
+    \caption{Tubo de pitot.}
+    \includegraphics[width=0.5\linewidth]{Imagens/metodologia/Tubo de pitot.PNG}
+    \caption*{Fonte: \cite{makersportal_pitot}.}
+    \label{fig:tubo pitot}
+\end{figure}
+
+Selecionou-se o MPS20N0040D para a medição da pressão diferencial. Apesar de o MS4525DO apresentar precisão superior e saída digital, optou-se pelo MPS20N0040D por seu menor custo e por permitir um tempo de resposta mais rápido e maior flexibilidade no processamento do sinal, detalhado a seguir.
+
+\textbf{Processamento do sinal de pressão diferencial} - O sensor mede a pressão diferencial por meio de uma ponte de \textit{Wheatstone}, cuja resistência típica varia entre 4 e 6 k$\Omega$ e cuja tensão de saída em fundo de escala (a 40 kPa) é de apenas 50 a 100 mV, um nível de sinal baixo demais para ser lido diretamente pelo ADC do microcontrolador com resolução adequada. Por esse motivo, adicionou-se um amplificador de instrumentação INA333 para condicionar o sinal antes da conversão, cujo resistor de ganho $R_g$ é implementado por meio de um \textit{trimmer} de $10\,k\Omega$, permitindo o ajuste fino do ganho.
+
+Considerando a faixa de velocidades relativas de operação definida em RA.02 ($-6$ a $20\,m/s$), a pressão dinâmica $q = \frac{1}{2}\rho V^2$ esperada é pequena frente à faixa de fundo de escala do sensor: no ponto de maior exigência ($V = 20\,m/s$, ao nível do mar), $q \approx 245\,Pa = 0,245\,kPa$, correspondendo a uma saída bruta do sensor de apenas 0,3 a 0,6 mV (a depender da sensibilidade da unidade dentro da tolerância de fabricação). Elevar esse sinal até a faixa plena do ADC (3,3 V) exigiria um ganho da ordem de milhares, incompatível com um único estágio de amplificação associado a um \textit{trimmer} de $10\,k\Omega$. Optou-se, portanto, por utilizar o ganho máximo especificado para o INA333, $G=1000$, obtido com:
+\begin{equation}
+R_g = \frac{100\,k\Omega}{G-1} = \frac{100\,k\Omega}{999} \approx 100\,\Omega
+\end{equation}
+valor plenamente ajustável dentro da faixa do \textit{trimmer} utilizado.
+
+Com esse ganho, a saída amplificada varia de aproximadamente 0,31 V a 0,61 V ao longo de toda a faixa de velocidades de RA.02 (Tabela \ref{Tab:PitotVoltagemADC}, pior caso de sensibilidade do sensor) utilizando entre 9\% e 19\% da faixa plena do ADC de 16 \textit{bits} ($V_{ref} = 3,3\,V$), porém com ampla margem de segurança contra saturação frente a variações de sensibilidade do sensor, temperatura e altitude.
+
+\begin{table}[H]
+\centering
+\caption{Tensão amplificada e contagem do ADC em função da velocidade relativa ($G=1000$, pior caso de sensibilidade do sensor).}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|c|c|c|}
+\hline
+\rowcolor[HTML]{C0C0C0}
+\textbf{Velocidade [m/s]} & \textbf{Pressão dinâmica [kPa]} & \textbf{Tensão amplificada [V]} & \textbf{Contagem ADC (16 \textit{bits})} \\ \hline
+2  & 0,00245 & 0,0031 & 61   \\ \hline
+5  & 0,01531 & 0,0191 & 380  \\ \hline
+10 & 0,06125 & 0,0766 & 1521 \\ \hline
+15 & 0,13781 & 0,1723 & 3421 \\ \hline
+20 & 0,24500 & 0,3063 & 6082 \\ \hline
+\end{tabular}}
+\caption*{Fonte: Produzido pelo autor.}
+\label{Tab:PitotVoltagemADC}
+\end{table}
+
+Apesar de não utilizar a faixa plena do ADC, a resolução de velocidade resultante permanece ampla: como a tensão amplificada é proporcional a $V^2$, sua sensibilidade à variação de velocidade cresce com a própria velocidade, de modo que a resolução (pior caso) varia de aproximadamente $0,016\,m/s$ por \textit{bit} do ADC em baixa velocidade ($2\,m/s$) a cerca de $0,0016\,m/s$ por \textit{bit} em velocidade de cruzeiro ($20\,m/s$) em ambos os casos, uma resolução muito superior à necessária para a estimativa de velocidade do sistema. O \textit{trimmer} permite, ainda, compensar eventuais desvios de \textit{offset} da ponte e reajustar o ganho durante a calibração em bancada, caso necessário.
+
+Além disso, como a densidade do ar $\rho$ varia com a altitude de operação (RA.03), a velocidade obtida a partir da pressão diferencial deve ser corrigida com base na altitude barométrica estimada pelos sensores de pressão, garantindo a exatidão da medida ao longo de toda a faixa operacional.
+
+\textbf{GNSS} - Para a medição de posição e velocidade em relação ao solo, comparam-se os receptores comerciais dispostos na Tabela \ref{tab:gps-comparison}.
+ 
+\begin{table}[H]
+\centering
+\caption{Sensores GNSS analisados.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0}
+\textbf{Sensor} & \textbf{Precisão posição} & \textbf{Amostragem} & \textbf{Sensibilidade} & \textbf{Preço [R\$]} \\ \hline
+
+NEO-6M 
+& 2.5 m 
+& 5 Hz  
+& $- 161 dBm$ 
+& \textit{a preencher} \\ \hline
+
+NEO-7M 
+& 2.5 m (GPS), 4 m (GLONASS) 
+& 10 Hz  
+& $- 161 dBm$ 
+& \textit{a preencher} \\ \hline
+
+NEO-M8N 
+& 2.5 m (GPS + GLONASS) 
+& 10 Hz 
+& $-167 dBm$  
+& \textit{a preencher} \\ \hline
+
+\end{tabular}}
+\caption*{Fonte: Produzido pelo autor.}
+\label{tab:gps-comparison}
+\end{table}
+
+Selecionou-se o GPS NEO M8N, responsável tanto pela medição de posição quanto pela velocidade em relação ao solo.
+
+\textbf{Atitude} - Para a estimativa de atitude, taxas angulares e acelerações da aeronave, atendendo também ao requisito RC.04 de redundância de sensores críticos, comparam-se os módulos de IMU dispostos na Tabela \ref{tab:accel-comparison}.
+
+ \begin{table}[H]
+\centering
+\caption{Sensores IMUs analisados.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0}
+\textbf{Sensor} & \textbf{Range} & \textbf{Precisão} & \textbf{Amostragem} & \textbf{Preço [R\$]} \\ \hline
+
+\textbf{BMI088 + LIS3MDL} 
+& \begin{tabular}[c]{@{}l@{}}Accel: ±3g a ±24g\\ Gyro: ±125 a ±2000 dps\\ Mag: ±4 a ±16 gauss\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel noise: $0.14 mg/\sqrt{Hz}$\\ Gyro noise: 0.014 $dps/\sqrt{Hz}$\\ Mag: ±0.1–0.2 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel:   1.4 kHz\\ Gyro:   2 kHz\\ Mag:   155 Hz\end{tabular}
+& \textit{a preencher} \\ \hline
+
+\textbf{ICM-20948}
+& \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±250 a ±2000 dps\\ Mag: ±4900 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel noise: $0.9 mg/\sqrt{Hz}$\\ Gyro noise: 0.014 $dps/\sqrt{Hz}$\\ Mag: ±1 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel:   1.125 kHz\\ Gyro:   1.125 kHz\\ Mag: 100 Hz\end{tabular}
+& \textit{a preencher} \\ \hline
+
+\textbf{BNO055}
+& \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±125 a ±2000 dps\\ Mag: ±1300 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Fusion accuracy: ~2°\\ Gyro noise: 0.014$ dps/\sqrt{Hz}$\\ Mag: ±0.3 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Fusion: 100 Hz\\ IMU bruto: 100 Hz\end{tabular}
+& \textit{a preencher} \\ \hline
+
+\textbf{MPU6050 + HMC5883L}
+& \begin{tabular}[c]{@{}l@{}}Accel: ±2g a ±16g\\ Gyro: ±250 a ±2000 dps\\ Mag: ±1.9 a ±8 gauss\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel noise: $400 µg/\sqrt{Hz}$\\ Gyro noise: 0.05 $dps/\sqrt{Hz}$\\ Mag: ±0.1–0.3 µT\end{tabular}
+& \begin{tabular}[c]{@{}l@{}}Accel: 1 kHz\\ Gyro: 8 kHz\\ Mag: 75 Hz\end{tabular}
+& \textit{a preencher} \\ \hline
+
+\end{tabular}}
+\caption*{Fonte: Produzido pelo autor.}
+\label{tab:accel-comparison}
+\end{table}
+
+Selecionaram-se o ICM20948 e o BNO055 como IMU, atendendo, neste último caso, ao requisito RC.04 de redundância de sensores críticos de atitude.
+
+Vale ressaltar que o BNO055 será integrado ao GNCU, uma vez que ele já possui DMP que reduz o custo computacional para estimativa da atitude, servindo como backup caso tenha algum problema com o DAPU.
+
+\textbf{AOA} - Para a medição do ângulo de ataque, atendendo ao requisito RF.01, optou-se pela utilização de um potenciômetro acoplado a uma aleta perfilada (Figura \ref{fig:AOA2}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Aleta AOA conexão com potenciômetro.}
+    \includegraphics[width=0.5\linewidth]{Imagens/metodologia/AOA2.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:AOA2}
+\end{figure}
+
+Está aleta será posicionado em uma posição em que há uma baixa influência na direção do escoamento decorrente do formato da asa e fuselagem (Figura \ref{fig:cfdASA}).
+
+\begin{figure}[H]
+    \centering
+    \caption{CFD da região lateral do escoamento na região da asa e fuselagem.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/CFD_ASA.png}
+    \caption*{Fonte: Harpia Aerodesign UFABC (2023).}
+    \label{fig:cfdASA}
+\end{figure}
+
+
+\textbf{Tração} – Para estimar a tração do motor, atendendo ao requisito RF.01, optou-se pela utilização de um microfone eletreto, no qual a frequência captada é proporcional à rotação do motor \cite{Fosalau2022}. Como o grupo motopropulsor é elétrico (motor \textit{brushless} acionado por ESC) com hélice de duas pás, a frequência fundamental de passagem das pás se relaciona à rotação do motor por meio da expressão $f = \frac{RPM}{60}\,n_{pás}$, com $n_{pás}=2$. A partir da relação entre a rotação obtida e as características do grupo motopropulsor, torna-se possível estimar a tração gerada pelo sistema a partir de calibração com testes estáticos; o processamento do sinal do microfone para extração dessa frequência é detalhado na Seção \ref{subsec:processamentoEstimacao}.
+
+\textbf{Deflexão das superfícies} – Para a medição de deflexão, atendendo aos requisitos RF.01 e RF.06, foram avaliadas duas configurações: a utilização de um potenciômetro acoplado diretamente à superfície de controle e a aplicação de um sensor flexível. Optou-se pelo sensor flexível devido à sua maior facilidade de instalação e integração mecânica \cite{KarinaAssini}. Um sensor flexível é instalado em cada uma das três superfícies de controle (aileron, profundor e leme), cuja variação de resistência é convertida em tensão por meio de um divisor resistivo alimentado em 3,3 V com um resistor de $10\,k\Omega$; a calibração desse sinal em ângulo de deflexão é detalhada na Seção \ref{subsec:processamentoEstimacao}.
+
+Após a definição dos sensores necessários para cada dado requisitado, analisaram-se as interfaces de comunicação de todos os dispositivos, com o objetivo de selecionar um microcontrolador capaz de suportar todas elas (Tabela \ref{Tab:Sensores/Dados/Interface}).
+
+\begin{table}[H]
+\centering
+\caption{Sensores selecionados com as suas interfaces de comunicação.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sensor}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Dados}}                                                       & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Interfaces}} \\ \hline
+\rowcolor[HTML]{FFFFFF} 
+BMP390 \cite{bosch_bmp390_ds}                                                        & \begin{tabular}[c]{@{}l@{}}Temperatura\\ Pressão\\ Altitude\end{tabular}                                          & I2C \& SPI                                                       \\ \hline
+MS5611 \cite{ms5611} & \begin{tabular}[c]{@{}l@{}}Temperatura\\ Pressão\\ Altitude\end{tabular}                                          & I2C \& SPI                                                       \\ \hline
+\begin{tabular}[c]{@{}l@{}}MPS20N0040 \cite{sparkfun_pressure_sensor_ds}\end{tabular}  & \begin{tabular}[c]{@{}l@{}}Pressão dinâmica\\ Velocidade (ar)\end{tabular}                                             & Analógico                                                          \\ \hline
+NEO M8N \cite{neom8n_ds}                                                      & \begin{tabular}[c]{@{}l@{}}Posição\\ Velocidade (solo)\end{tabular}                                               & UART, I2C \& SPI                                                 \\ \hline
+ICM20948      \cite{icm20948_ds}                                                & \begin{tabular}[c]{@{}l@{}}Aceleração\\ Atitude\\ Velocidade instantânea\\ Rotação\\ Campo Magnético\end{tabular} & I2C \& SPI                                                       \\ \hline
+BNO055    \cite{bno055_ds}                                                    & \begin{tabular}[c]{@{}l@{}}Aceleração\\ Atitude\\ Velocidade instantânea\\ Rotação\\ Campo Magnético\end{tabular} & I2C \& UART                                                      \\ \hline
+Potenciômetro 10k  \cite{rv24af_ds}                                              & Angulo de ataque                                                                                                  & Analógico                                                        \\ \hline
+Microfone  \cite{cmc5044pf-a_ds}                                                   & \begin{tabular}[c]{@{}l@{}}RPM\\ Estimativa Tração \end{tabular}                                                   & Analógico                                                        \\ \hline
+Sensor Flexível \cite{flex22_ds}                                              & Deflexão das superfícies                                                                                          & Analógico                                                        \\ \hline
+\end{tabular}}
+\label{Tab:Sensores/Dados/Interface}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+\subsection{Microcontrolador}
+
+A seleção dos microcontroladores visou cumprir o objetivo de cada subsistema, assim como suas sub-divisões como sensores e Wi-Fi, avaliou-se os microcontroladores dispostos na Tabela \ref{Tab:SelecProcessa}.
+
+\begin{table}[H]
+\centering
+\caption{Comparação entre microcontroladores.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\textbf{Característica}} &
+\textbf{ESP32} &
+\textbf{STM32H723VGT6} &
+\multicolumn{1}{c|}{\textbf{Arduino Mega 2560 }} &
+\multicolumn{1}{c|}{\textbf{STM32F446RET6}} &
+\multicolumn{1}{c|}{\textbf{Raspberry Pi Pico }} \\ \hline
+
+Arquitetura &
+\begin{tabular}[c]{@{}c@{}}32-bits\\dual core\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}32-bits\\single core\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}8-bits\\single core\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}32-bits\\single core\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}32-bits\\dual core\end{tabular} \\ \hline
+
+Velocidade de \textit{clock} &
+240MHz &
+550MHz &
+16MHz &
+180MHz &
+133MHz \\ \hline
+
+\textit{RAM} &
+520Kb &
+564kb &
+8Kb &
+128Kb &
+264Kb \\ \hline
+
+Memória flash &
+4Mb &
+1Mb &
+256Kb &
+512Kb &
+2Mb \\ \hline
+
+ADC &
+12 bits &
+16 bits &
+10 bits &
+12 bits &
+12 bits \\ \hline
+
+Suporte RTOS &
+Médio &
+Alto &
+Não &
+Alto &
+Médio \\ \hline
+
+Suporte comunidade &
+Alto &
+Médio &
+Alto &
+Médio &
+Médio \\ \hline
+
+Experiência &
+Sim &
+Não &
+Sim &
+Não &
+Não \\ \hline
+
+Preço [R\$] &
+\textit{a preencher} &
+\textit{a preencher} &
+\textit{a preencher} &
+\textit{a preencher} &
+\textit{a preencher} \\ \hline
+
+
+\end{tabular}}
+\label{Tab:SelecProcessa}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+A partir dos microcontroladores listados, realizou-se os \textit{trade-off} das características apresentadas. De modo que seja possível realizar a interface garantindo uma boa velocidade de processamento para o DAPU, sendo selecionado o STM32H723VGT6 \cite{st_stm32h723zg_2025}.
+
+Visando uma boa comunicação com os comandos do piloto e transmissão dos dados para os atuadores, utilizando \textit{hardware-driven} para o PWM. Selecionou-se o STM32F446RET6 \cite{st_stm32f446mc_2016}  para o GNCU.
+
+Além disso visando um sistema com característica determinística, cumprindo com o requisito RP.02, ambos os chips STM32 selecionados apresentam alto suporte para RTOS. E uma customização do \textit{clock} para cada aplicação, facilitando integrações com os outros sistemas.
+
+Já para o CGU optou-se pelo ESP32 C3 \cite{espressif_esp32c3_2025}  pela capacidade de comunicação Wi-Fi integrada ao chip, além de apresentar a interface necessária para sua comunicação com o DAPU.
+
+Adicionalmente, verificou-se que os barramentos I2C do DAPU comportam a coexistência de todos os sensores selecionados sem conflito de endereçamento, e que o número de canais ADC disponíveis é suficiente para a leitura de todos os sensores analógicos do sistema (pressão diferencial amplificada, ângulo de ataque, estimativa de tração e deflexão das superfícies), restando ainda canais livres para expansões futuras.
+
+A configuração final esta disposta na Tabela \ref{Tab:NucleoProcessador}.
+
+\begin{table}[H]
+\centering
+\caption{Microcontroladores para suas respectivos sistemas.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Sistema}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Microcontrolador}} \\ \hline
+\rowcolor[HTML]{FFFFFF} 
+DAPU                              & STM32H723VGT6                                                             \\ \hline
+GNCU                                            & STM32F446RET6                                                             \\ \hline
+CGU                                      & ESP32 C3                                                                  \\ \hline
+\end{tabular}
+\label{Tab:NucleoProcessador}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+\subsection{\textit{Power Distribution Network}}
+\label{subsec:PDN}
+
+O Dimensionamento do PDN seguiu o seguinte fluxo de trabalho:
+
+\begin{figure}[H]
+    \centering
+    \caption{Fluxograma do PDN.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/FluxoPDN.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:fluxoPDN}
+\end{figure}
+
+O consumo de corrente de cada componente conectado a rede está disposto na Tabela \ref{Tab:ConsumoCompo}. Vale ressaltar que estes valores se basearam nos \textit{datasheets} de cada componente.
+
+\begin{table}[H]
+\centering
+\caption{Consumo dos componentes.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Componente}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Consumo Médio}} \\ \hline
+STM32H723                                                            & 150 mA                                                               \\ \hline
+STM32F446                                                            & 46 mA                                                              \\ \hline
+ESP32 C3                                                               & 100 mA                                                               \\ \hline
+BMP390                                                               & 59,2 mA                                                              \\ \hline
+MS5611                                                               & 0,125 mA                                                             \\ \hline
+HX711                                                                & 1,2 mA                                                               \\ \hline
+NEO M8N                                                              & 25 mA                                                                \\ \hline
+ICM20948                                                             & 3,11 mA                                                              \\ \hline
+BNO055                                                               & 12,3 mA                                                              \\ \hline
+\rowcolor[HTML]{C0C0C0} 
+\textbf{Total}                                                       & \textbf{396,935 mA}                                                  \\ \hline
+\end{tabular}
+\label{Tab:ConsumoCompo}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+Para dimensionar a bateria listou-se então os tipos das baterias e suas propriedades (Tabela \ref{tab:propBaterias}).
+
+\begin{table}[H]
+\centering
+\caption{Propriedades diferentes químicos de baterias.}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|
+>{\columncolor[HTML]{C0C0C0}}l |
+>{\columncolor[HTML]{FFFFFF}}c |
+>{\columncolor[HTML]{FFFFFF}}c |
+>{\columncolor[HTML]{FFFFFF}}c |
+>{\columncolor[HTML]{FFFFFF}}c |c|}
+\hline
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Caracteristica}} & \cellcolor[HTML]{C0C0C0}\textbf{NiCd} & \cellcolor[HTML]{C0C0C0}\textbf{NiMh} & \cellcolor[HTML]{C0C0C0}\textbf{$LiFePO_4$} & \cellcolor[HTML]{C0C0C0}\textbf{Li-Po} & \cellcolor[HTML]{C0C0C0}\textbf{Li-Ion} \\ \hline
+Energia específica {[}W/Kg{]}                                         & 150                                & ~250                                & ~200                                    & 100-265                                & 150-250                                 \\ \hline
+Taxa de autodescarga {[}\% ao mês{]}                                  & 10                                 & 30                                 & 4.5                                        & 5                                    & 1-3                                     \\ \hline
+Voltagem nominal {[}V{]}                                              & 1.2                                   & 1.2                                   & 3.2                                        & 3.7                                    & 3.7                                    \\ \hline
+{\color[HTML]{000000} Durabilidade {[}ciclos{]}}                      & 2000                            & 180 - 2000                            & 2500 - 9000                                & 500 - 1000                              & 500 - 1000                               \\ \hline
+Efeito memória                                                        & \cellcolor[HTML]{FFFFFF}Alto          & \cellcolor[HTML]{FFFFFF}Médio         & \cellcolor[HTML]{FFFFFF}Baixo              & \cellcolor[HTML]{FFFFFF}Baixo          & Baixo                                   \\ \hline
+\end{tabular}}
+\caption*{Fonte: Adaptado de \cite{wikipedia_commercial_battery}.}
+\label{tab:propBaterias}
+\end{table}
+
+Com isso, optou-se pela utilização de duas baterias do tipo Li-ion 18650 (3000mAh) (Figura \ref{fig:bateria18650}) conectadas em série, atingindo uma tensão nominal de 7,4 V, sendo assim necessário regulador de tensão para a faixa de operação dos sensores e processadores de 3.3V.
+
+
+\begin{figure}[H]
+    \centering
+    \caption{Bateria 18650.}
+    \includegraphics[width=0.55\linewidth]{Imagens/metodologia/bateria-18650.jpg}
+    \caption*{Fonte: \cite{usinainfo_18650_8759}.}
+    \label{fig:bateria18650}
+\end{figure}
+
+Considerando o consumo total dos componentes obteve-se uma autonomia de 6,9h, sendo mais que suficiente para o sistema.
+
+\textbf{Regulador de tensão}: Visando reduzir a tensão do sistema de 7.4V para 3.3V optou-se pela utilização de redutor de tensão linear.
+
+Para os sistemas mais sensíveis a ruído como GPS e sinais analógicos optou-se pela utilização de LP2985 3.3V \cite{ti_lp2985_datasheet} que possui características dispostas na Tabela \ref{tab:regTensao}.
+
+Já para o restante dos componentes menos sensíveis a ruído optou-se pelo uso do redutor AMS1117 3.3V \cite{ams1117_utd_datasheet}, suas características estão dispostas na Tabela \ref{tab:regTensao}.
+
+\begin{table}[H]
+\centering
+\caption{Características reguladores de tensão}
+\begin{tabular}{|l|c|c|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Característica}} & \textbf{AMS1117 3.3V} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}\textbf{LP2985 3.3V}} \\ \hline
+Tipo                                                                  & LDO Linear           & LDO Linear                                                         \\ \hline
+\begin{tabular}[c]{@{}l@{}}Corrente maxima\\ de saída\end{tabular}    & 800mA - 1A           & 150mA                                                              \\ \hline
+\textit{DropOut voltage}                                              & 1.1V                 & 280mV                                                              \\ \hline
+Ruído                                                                 & Alto                 & Baixo                                                              \\ \hline
+\end{tabular}
+\caption*{Fonte: Adaptado dos \textit{datasheets} de cada regulador.}
+    \label{tab:regTensao}
+\end{table}
+
+\textbf{Sistema de proteção}: Adicionou-se um sistema de proteção contra polaridade, e consumo alto de corrente, visando aumentar a confiabilidade do sistema (Figura \ref{fig:revPolarity}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Sistema de proteção de polaridade.}
+    \includegraphics[width=0.6\linewidth]{Imagens/metodologia/ReversePolarity.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:revPolarity}
+\end{figure}
+
+O sistema conta com uma chave de três posições que seleciona o modo de operação da rede de energia: \textit{Desligado}, \textit{Ligado} e \textit{Warmup} (Figura \ref{fig:warmUP}). Nas posições \textit{Desligado} e \textit{Ligado}, a energia é simplesmente removida ou entregue integralmente ao sistema, sem qualquer sinalização adicional. Já na posição \textit{Warmup}, o sistema é energizado por completo, porém um circuito dedicado gera um sinal digital de \textit{warmup} em uma trilha dedicada. Um diodo inserido no caminho de alimentação da base garante que esse sinal seja gerado apenas quando a chave está na posição \textit{Warmup}, permanecendo inativo nas demais posições.
+
+\begin{figure}[H]
+    \centering
+    \caption{Sistema de seleção de modo de operação.}
+    \includegraphics[width=0.6\linewidth]{Imagens/metodologia/WarmUPMode.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:warmUP}
+\end{figure}
+
+Esse sinal indica ao DAPU que o sistema se encontra em processo de aquecimento, permitindo que os sensores iniciem a aquisição de dados e a obtenção de \textit{fix} de posição antes do início efetivo da operação. Enquanto o sinal de \textit{warmup} estiver ativo, o DAPU envia ao GNCU um sinal de \textit{heartbeat} acompanhado de um comando de não operação, impedindo que a aeronave receba comandos de controle antes que o sistema esteja pronto; à CGU, por sua vez, são enviados o status dos sensores e o resultado do monitoramento de integridade do sistema (\textit{health management}). Uma vez concluído o aquecimento, o piloto seleciona manualmente a posição \textit{Ligado} na chave, retirando o sinal de \textit{warmup} e permitindo que o GNCU passe a operar normalmente, sujeito às demais condições de segurança discutidas na Seção \ref{subsec:maquinaEstados}.
+
+O sistema conta ainda com uma barra de cinco \textit{LEDs} e um \textit{buzzer} para indicação visual e sonora do seu estado: um \textit{LED} piscante indica o funcionamento geral do sistema; os quatro \textit{LEDs} restantes indicam, de forma binária (aceso/apagado), respectivamente a conexão com o cartão SD, o status dos sensores, a comunicação com o GNCU e a comunicação com a CGU. O \textit{buzzer}, por sua vez, emite um sinal sonoro a cada 5 segundos de operação, fornecendo uma indicação auditiva adicional de que o sistema permanece em funcionamento.
+
+\textbf{Dimensionamento das vias}: Visando o desenvolvimento futuro de uma PCB utilizou-se o software Saturn PCB para dimensionamento das vias de energia, sinais e planos de energia.
+
+As características utilizadas da PCB estão dispostas na Tabela \ref{tab:propPCB}.
+
+\begin{table}[H]
+\centering
+\caption{Propriedades da PCB no fabricante.}
+\label{tab:propPCB}
+\begin{tabular}{|
+>{\columncolor[HTML]{FFFFFF}}l |l|}
+\hline
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Características}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Propriedade}} \\ \hline
+Faces                                                                  & 2                                                                 \\ \hline
+Material                                                               & FR-4                                                              \\ \hline
+FR4-TG                                                                 & TG 150-160                                                        \\ \hline
+Espessura                                                              & 1,6 mm                                                             \\ \hline
+Espaçamento mínimo entre trilhas                                       & 6/6 mil                                                            \\ \hline
+Tamanho mínimo furo                                                    & \cellcolor[HTML]{FFFFFF}0,3 mm                                     \\ \hline
+Proteção UV                                                            & Não                                                               \\ \hline
+Finalização da face                                                   & HASL com chumbo                                                   \\ \hline
+Cobre                                                                  & 1 Oz                                                              \\ \hline
+\end{tabular}
+\caption*{Fonte: \cite{pcbway_quote2026}.}
+\end{table}
+
+A larguras das vias e planos estão dispostos na Tabela \ref{tab:DimenVias}.
+
+\begin{table}[H]
+\caption{Dimensionamento das vias da PCB.}
+\label{tab:DimenVias}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\cellcolor[HTML]{C0C0C0}\textbf{Via}} & \multicolumn{1}{c|}{\cellcolor[HTML]{C0C0C0}\textbf{Largura}} & \textbf{Corrente Máxima} & \textbf{Cobre} & \textbf{Dissipação de energia} & \textbf{Aumento de temperatura} \\ \hline
+\cellcolor[HTML]{FFFFFF}3,3V                          & 0,5 mm                                                      & 1,2414 A             & 1 Oz           & 0,04614 W                      & 10 ºC                           \\ \hline
+Sinal                                                      & 0,2 mm                                                     & 0,7063 A             & 1 Oz            & 0,03950 W                      & 10 ºC                           \\ \hline
+\textit{Ground}                                                      & Plano                                                   & -             & 1 Oz            & -                      & -                          \\ \hline
+\end{tabular}}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+\subsection{Circuito e PCB}
+
+
+Com os componentes selecionados, utilizou-se o software KiCad para o desenvolvimento do diagrama elétrico e PCB, incluindo todas as conexões necessárias e a adição de conectores.
+
+Assim, obteve-se o diagrama do conjunto de sensores apresentado na Figura \ref{fig:circuitoKiCAD}. O circuito completo pode ser visto no GitHub \cite{claro2026alaris}.
+
+\begin{figure}[H]
+    \centering
+    \caption{Diagrama elétrico do DAPU.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/DiagramaEletrico.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:circuitoKiCAD}
+\end{figure}
+
+A partir da criação do esquemático, desenvolveu-se a PCB seguindo o dimensionamento das vias calculado anteriormente.
+
+A placa foi dividida em setores de acordo com a sua função a fim de facilitar montagem, desenvolvimento e manutenção (Figura \ref{fig:PCBdistribution}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Divisão da placa e seus sistemas.}
+    \includegraphics[width=0.6\linewidth]{Imagens/metodologia/PCBDistribution.jpg}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:PCBdistribution}
+\end{figure}
+
+Obtendo assim a PCB final do sistema (Figura \ref{fig:PCBs}). Com dimensões de 86 mm por 99 mm, com duas camadas, cumprindo assim os requisitos RM.01 e RM.02.
+
+\begin{figure}[H]
+    \centering
+    \caption{PCB Final.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/PCBs.jpg}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:PCBs}
+\end{figure}
+
+\section{Firmware}
+
+O desenvolvimento do \textit{firmware} embarcado seguiu o fluxo de trabalho disposto na Figura \ref{fig:softwareFlux}. A implementação foi organizada de modo a garantir a leitura dos sensores, o processamento das estimativas de estado, a comunicação entre sistemas e a atuação sobre as superfícies de controle, mantendo a separação entre as unidades DAPU, GNCU e CGU.
+
+\begin{figure}[H]
+    \centering
+    \caption{Fluxograma de desenvolvimento do \textit{firmware}.}
+    \includegraphics[width=1\linewidth]{Imagens/metodologia/SoftwareFlux.png}
+    \caption*{Fonte: Produzido pelo autor.}
+    \label{fig:softwareFlux}
+\end{figure}
+
+Para a programação dos microcontroladores STM32, utilizou-se a plataforma \textit{STM32CubeIDE}, devido ao suporte nativo aos periféricos da família STM32, à geração inicial de código por meio do STM32CubeMX e à integração com o \textit{kernel} \textit{FreeRTOS}.
+
+A gravação dos microcontroladores foi realizada por meio de interface TTL-UART, conectando-se individualmente a cada unidade de processamento durante a etapa de desenvolvimento. Para o ESP32 (CGU) utilizou-se o \textit{Visual Studio Code} com a extensão \textit{PlatformIO}, facilitando a compilação, gravação e organização das bibliotecas utilizadas.
+
+Inicialmente, foram desenvolvidas rotinas individuais para validação de cada periférico e sensor, utilizando as interfaces de comunicação UART, I²C e SPI, bem como os periféricos ADC e PWM do microcontrolador, conforme as especificações dos respectivos \textit{datasheets}. Essa etapa permitiu validar isoladamente o funcionamento dos sensores e dos recursos de hardware antes da integração em uma arquitetura única de execução. Após essa validação, as rotinas foram integradas ao \textit{firmware} principal de cada sistema.
+
+\subsection{Sistema Operacional de Tempo Real}
+
+Com o objetivo de tornar o sistema mais determinístico e melhorar a organização das rotinas embarcadas, adotou-se uma arquitetura baseada em \textit{Real time operating system} (RTOS), utilizando o \textit{kernel} \textit{FreeRTOS} nos microcontroladores STM32 responsáveis pelo DAPU e GNCU.
+
+A utilização do RTOS permite dividir o \textit{firmware} em tarefas independentes, cada uma associada a uma função específica do sistema, como leitura de sensores, estimação de estados, transmissão de dados, salvamento de informações e malha de controle. Permitindo maior previsibilidade temporal e melhor manutenção do código.
+
+As principais funcionalidades utilizadas do \textit{FreeRTOS} foram:
+
+\begin{itemize}
+    \item \textbf{Tarefas prioritárias}: permitem que rotinas de maior prioridade interrompam tarefas menos críticas quando necessário;
+    % \item \textbf{Filas}: troca de dados entre tarefas produtoras e consumidoras, reduzindo o acesso simultâneo a variáveis compartilhadas;
+    \item \textbf{\textit{Mutexes}}: empregados para proteger estruturas de dados compartilhadas, como estados estimados da aeronave;
+    % \item \textbf{\textit{Event Groups}}: utilizados para sinalização de eventos discretos, como conclusão de inicialização, obtenção de dados válidos ou detecção de falha;
+    \item \textbf{\textit{Watchdog}}: empregado como camada adicional de segurança contra travamentos do \textit{firmware}.
+\end{itemize}
+
+Em ambas as unidades, as prioridades das tarefas seguem a convenção nativa do \textit{FreeRTOS}, na qual valores numéricos mais altos representam maior prioridade de execução. Como o DAPU e o GNCU desempenham funções distintas dentro da arquitetura GNC, o detalhamento das tarefas, frequências e prioridades de cada unidade é apresentado separadamente nas seções a seguir.
+
+\subsection{Interface entre os Subsistemas}
+\label{subsec:interfaceSubsistemas}
+
+A comunicação entre os núcleos de processamento segue a arquitetura já apresentada na Figura \ref{fig:diagramaDoSistema} e as funções de cada subsistema descritas na Tabela \ref{tab:SubSis_Functions}. Detalha-se a seguir o protocolo e a responsabilidade de cada enlace de comunicação:
+
+\begin{itemize}
+    \item \textbf{Receptor RC $\rightarrow$ GNCU}: sinais PWM individuais
+    por canal (aileron, profundor, leme, manete e canal de modo),
+    capturados via periféricos de \textit{Input Capture} dos
+    \textit{timers} do STM32F446, permitindo a medição direta da largura
+    de pulso sem sobrecarga de CPU por \textit{polling};
+ 
+    \item \textbf{GNCU $\leftrightarrow$ DAPU}: comunicação via SPI \textit{full-duplex}, na qual o DAPU envia a estimativa de estado da aeronave (atitude, altitude, velocidade e posição) e o GNCU retorna telemetria de baixo nível (estado dos atuadores, status do modo de voo);
+ 
+    \item \textbf{DAPU $\leftrightarrow$ CGU}: comunicação via UART, responsável pelo tráfego de dados de missão e telemetria de alto nível, sem impacto na malha de controle;
+ 
+    \item \textbf{GNCU $\rightarrow$ Atuadores}: geração de PWM via \textit{timers} em modo de saída, independente da carga de
+    processamento das demais tarefas.
+\end{itemize}
+
+Essa separação reduz o acoplamento entre as funções críticas (DAPU $\leftrightarrow$ GNCU) e não críticas (DAPU/GNCU $\leftrightarrow$ CGU) do sistema: eventuais atrasos na transmissão de telemetria à CGU não comprometem a leitura dos sensores nem a geração dos comandos de controle.
+
+\subsection{DAPU}
+\label{subsec:DAPU}
+
+O DAPU foi projetado para operar com uma taxa base de amostragem de 5 ms, equivalente a 200 Hz. Essa frequência foi definida visando acompanhar adequadamente a dinâmica da aeronave e permitir a estimação de estados em tempo compatível com o comportamento esperado do veículo; o GNCU, por sua vez, opera segundo sua própria cadência de execução, apresentada na Seção \ref{subsec:gncuTarefas}.
+
+Entretanto, nem todos os sensores possuem capacidade de operação a 200 Hz. Para esses casos, realizou-se um \textit{trade-off} entre frequência de amostragem, precisão da medida e função desempenhada pelo sensor dentro do sistema. A Tabela~\ref{Tab:Freqsensores} apresenta as frequências adotadas para cada sensor do DAPU.
+
+\begin{table}[H]
+\centering
+\caption{Frequência de operação de cada sensor do DAPU.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\textbf{Sensor}} &
+\multicolumn{1}{c|}{\textbf{Frequência de amostragem}} \\ \hline
+BMP390 & 100 Hz \\ \hline
+MS5611 & 50 Hz \\ \hline
+MPS20N004 & 200 Hz \\ \hline
+NEO M8N & 4 Hz \\ \hline
+ICM20948 & 200 Hz \\ \hline
+Microfone (amostragem bruta) & 1024 Hz \\ \hline
+Microfone (RPM/tração, pós-FFT) & 1 Hz \\ \hline
+Sensor flexível & 200 Hz \\ \hline
+\end{tabular}
+\label{Tab:Freqsensores}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+As tarefas periódicas foram implementadas utilizando mecanismos de temporização do \textit{FreeRTOS}, de modo a manter períodos de execução constantes. Para sensores de menor frequência, os dados são atualizados conforme a disponibilidade de novas amostras, enquanto as tarefas de maior frequência continuam operando com os últimos valores válidos.
+
+Com base na criticidade de cada rotina, definiram-se as prioridades das tarefas do DAPU, conforme apresentado na Tabela~\ref{Tab:RTOSPrioridadesDAPU}. A prioridade de salvamento foi definida como superior à de transmissão, de modo que a comunicação externa não comprometa a integridade dos dados coletados. A tarefa de \textit{health management} (Seção \ref{subsec:healthManagement}) foi posicionada em prioridade intermediária, abaixo dos sensores mais críticos à guiagem de voo, porém acima dos sensores auxiliares, garantindo que eventuais falhas sejam detectadas sem comprometer a amostragem das grandezas mais críticas.
+
+As três tarefas de fusão sensorial (Seção \ref{subsec:processamentoEstimacao}) foram inseridas logo abaixo dos sensores de que dependem: a Fusão de Atitude recebe prioridade imediatamente após o IMU, garantindo que sua estimativa esteja disponível antes que as tarefas de Fusão de Altitude e de Fusão de Posição sejam executadas, ordem também reforçada na Seção \ref{subsec:processamentoEstimacao}. A tarefa de RPM permanece com prioridade baixa: como sua janela de aquisição de $1\,s$ é ordens de grandeza mais lenta que o período do laço base de $5\,ms$ (Seção \ref{subsec:DAPU}), atrasos de alguns ciclos não comprometem a validade da estimativa de tração.
+
+\begin{table}[H]
+\centering
+\caption{Prioridade de cada tarefa do DAPU no RTOS.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\textbf{Tarefa}} &
+\multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+Salvar dado & 14 \\ \hline
+Transmitir dado & 13 \\ \hline
+GPS (NEO M8N) & 12 \\ \hline
+IMU (ICM20948) & 11 \\ \hline
+Fusão de Atitude & 10 \\ \hline
+Pitot (MPS20N0040D) & 9 \\ \hline
+Altímetro (BMP390) & 8 \\ \hline
+Altímetro (MS5611) & 7 \\ \hline
+Fusão de Altitude & 6 \\ \hline
+Fusão de Posição & 5 \\ \hline
+\textit{Health Management} & 4 \\ \hline
+AOA & 3 \\ \hline
+RPM (FFT / Tração) & 2 \\ \hline
+Deflexão das superfícies & 1 \\ \hline
+\end{tabular}
+\label{Tab:RTOSPrioridadesDAPU}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+\subsubsection{Processamento e Estimação de Estados}
+\label{subsec:processamentoEstimacao}
+
+Os dados provenientes dos sensores são processados antes de serem utilizados pelas rotinas de controle e telemetria. Para reduzir ruídos de medição e melhorar a confiabilidade das estimativas, adotou-se uma arquitetura de \textit{Extended Kalman Filters} (EKF) federada: em vez de um único filtro monolítico com todos os estados da aeronave, cada grandeza (atitude, altitude, velocidade/posição) é estimada por um filtro independente, executado em sua própria tarefa do FreeRTOS
+
+Essa escolha introduz um resultado sub-ótimo uma vez que erros de um filtro podem se propagar para os filtros que dependem de sua saída, sem que estes possam corrigi-lo de volta, mas simplifica significativamente a implementação e a validação embarcada em comparação a um filtro único de estados acoplados, mantendo ainda assim uma estimativa mais robusta do que a obtida por qualquer sensor isolado, conforme demonstrado na Seção \ref{subsec:validacaoEKF}.
+
+A dependência entre os filtros é unidirecional: o filtro de atitude não depende dos demais, enquanto os filtros de altitude e de velocidade/posição utilizam a atitude estimada para projetar as medidas do acelerômetro e do tubo de Pitot no referencial da aeronave. Para garantir essa ordem sem recorrer a \textit{polling}, a tarefa de Fusão de Atitude sinaliza após publicar sua estimativa em uma variável protegida por \textit{mutex}; as tarefas de Fusão de Altitude e de Fusão de Posição aguardam esse sinal antes de executar sua própria etapa de atualização a cada ciclo, o que também se reflete na prioridade de cada tarefa (Tabela \ref{Tab:RTOSPrioridadesDAPU}).
+
+\textbf{Atitude} -- O filtro de atitude estima o vetor de estados
+\begin{equation}
+    \mathbf{x}_{att} = \begin{bmatrix} \phi & \theta & \psi & b_p & b_q & b_r \end{bmatrix}^T,
+\end{equation}
+composto pelos ângulos de rolamento, arfagem e guinada e pelos \textit{biases} das três taxas angulares do giroscópio (ICM20948). Os \textit{biases} são inicializados durante o estado \textit{self-test} (Seção \ref{subsec:maquinaEstados}), assumindo a aeronave estacionária: calcula-se a média das leituras brutas do giroscópio durante essa janela, e o valor obtido é utilizado como estimativa inicial de $b_p$, $b_q$ e $b_r$.
+
+A etapa de predição integra as taxas angulares corrigidas do \textit{bias} através da cinemática de ângulos de Euler, enquanto a etapa de atualização utiliza o acelerômetro para corrigir rolamento e arfagem (a partir da direção estimada da gravidade) e o magnetômetro exclusivamente para corrigir a guinada, evitando que distorções locais do campo magnético afetem a estimativa de rolamento/arfagem.
+
+O principal desafio da fusão inercial é que o acelerômetro mede a soma da gravidade com a aceleração linear da aeronave, e não a gravidade isoladamente; durante manobras, essa aceleração não-gravitacional pode ser interpretada erroneamente como uma mudança de atitude. \cite{euston2008fixedwing} tratam esse problema propondo um filtro complementar que compensa a leitura do acelerômetro utilizando um modelo de força centrípeta derivado da velocidade do ar e da taxa de guinada. Adotou-se aqui uma simplificação dessa mesma ideia: em vez de compensar explicitamente a aceleração não-gravitacional, a covariância de medição do acelerômetro é inflada de forma adaptativa sempre que o módulo da força específica medida se afasta de $1\,g$:
+\begin{equation}
+    R_{acc,ef} = R_{acc,0}\left(1 + k\,\frac{\left(\lVert \mathbf{a} \rVert - g\right)^2}{g^2}\right),
+\end{equation}
+em que $R_{acc,0}$ é a covariância nominal do sensor em repouso, $g$ é a aceleração da gravidade e $k$ é um ganho, de modo que o filtro reduza gradualmente a confiança no acelerômetro durante manobras sem descartar a medida por completo.
+
+\textbf{Altitude} -- O filtro de altitude estima
+\begin{equation}
+    \mathbf{x}_{alt} = \begin{bmatrix} h & \dot{h} & b_a \end{bmatrix}^T,
+\end{equation}
+onde $h$ é a altitude relativa ao ponto de inicialização, $\dot{h}$ a velocidade vertical e $b_a$ o \textit{bias} do eixo vertical do acelerômetro, já projetado no referencial vertical a partir da atitude estimada pelo filtro anterior. Durante a etapa \textit{self-test} (Seção \ref{subsec:PDN}), o sistema aguarda aproximadamente $2\,s$ enquanto calcula a média das leituras do BMP390 e do MS5611, definindo esse valor como referência $h=0$.
+
+A predição integra a aceleração vertical (compensada pela gravidade e pelo \textit{bias} estimado) para propagar $h$ e $\dot h$, enquanto a atualização utiliza as leituras dos dois barômetros como medidas independentes de $h$, com covariâncias de medição obtidas diretamente das resoluções de altitude já levantadas na Tabela \ref{Tab:SensoresPress}: $R_{BMP390} \approx (0{,}25\,m)^2$ e $R_{MS5611} \approx (0{,}1\,m)^2$. Como os sensores operam em frequências distintas (100 Hz e 50 Hz, Tabela \ref{Tab:Freqsensores}), a etapa de atualização correspondente a cada barômetro é executada apenas quando uma nova amostra está disponível, mantendo-se o último valor válido nos demais ciclos
+
+A arquitetura aproveita, assim, a maior taxa do BMP390 para reduzir a latência da estimativa e a maior precisão do MS5611 para corrigir o viés acumulado.
+
+O ruído de processo associado ao \textit{bias} do acelerômetro ($b_a$) foi modelado como um passeio aleatório lento, seguindo a caracterização típica de instabilidade de \textit{bias} de acelerômetros MEMS de baixo custo descrita por \cite{groves2013principles}.
+
+
+\textbf{Velocidade e Posição} -- Para a estimativa de velocidade e posição em relação ao solo, adotou-se a formulação de sete estados apresentada por \cite{beard2012small} para filtros de suavização de GPS em pequenas aeronaves não tripuladas:
+\begin{equation}
+    \mathbf{x}_{pos} = \begin{bmatrix} p_n & p_e & V_g & \chi & w_n & w_e & \psi \end{bmatrix}^T,
+\end{equation}
+em que $p_n$ e $p_e$ são as posições norte e leste, $V_g$ é a velocidade em relação ao solo, $\chi$ é o ângulo de curso, $w_n$ e $w_e$ são as componentes do vento e $\psi$ é o ângulo de guinada, este último tratado como uma pseudo-medida fornecida diretamente pelo filtro de atitude (apresentada anteriormente) em vez de ser estimado de forma independente.
+
+O vento é modelado como aproximadamente constante (passeio aleatório lento), e a velocidade do ar medida pelo tubo de Pitot, alinhado ao eixo longitudinal ($x$) da aeronave, é combinada com $\chi$, $\psi$ e o vento estimado por meio do triângulo de velocidades clássico, assumindo ângulo de derrapagem ($\beta$) nulo, coerente com a ausência de uma aleta de derrapagem dedicada no sistema. O GPS (NEO M8N, 4 Hz) atualiza $p_n$, $p_e$ e $V_g$ diretamente, enquanto a predição a $200\,Hz$ é realizada a partir da aceleração longitudinal e da taxa de guinada.
+
+Ressalta-se que essa formulação apresenta singularidade numérica quando $V_g \to 0$, uma vez que o ângulo de curso $\chi$ deixa de ser bem definido nessa condição; o escopo deste trabalho não contempla as fases de decolagem e pouso, nas quais essa condição poderia ocorrer, ficando o tratamento desse caso como oportunidade de desenvolvimento futuro.
+
+Além da estimação de estados propriamente dita, o DAPU realiza o processamento de dois outros sinais analógicos que exigem interpretação antes de seu uso: a estimativa de rotação do motor e a deflexão das superfícies de controle.
+
+A rotação do motor é obtida a partir do sinal do microfone eletreto (Seção \ref{subsec:sensores}), cuja frequência é proporcional à passagem das pás da hélice segundo $f = RPM/60 \times n_{pás}$. A extração dessa frequência é realizada por meio de uma \textit{Fast Fourier Transform} (FFT) de $N=1024$ pontos, calculada pela função \texttt{arm\_rfft\_fast\_f32} da biblioteca CMSIS-DSP, aproveitando a unidade de ponto flutuante do STM32H723.
+
+A resolução em frequência de uma FFT depende exclusivamente do tempo total de aquisição $T$, segundo $\Delta f = 1/T$, e não da taxa de amostragem ou do número de pontos isoladamente. Para uma hélice de duas pás operando a até $5000\,RPM$, a frequência de passagem de pás máxima esperada é de aproximadamente $166{,}7\,Hz$; para resolver variações de RPM da ordem de dezenas de rotações, adotou-se uma taxa de amostragem de $f_s = 1024\,Hz$ (acima do critério de Nyquist para o sinal de interesse, com margem para harmônicos), resultando em uma janela de aquisição de $T = N/f_s = 1\,s$ e em uma resolução de $\Delta f = 1\,Hz$, equivalente a aproximadamente $30\,RPM$ por \textit{bin}. Como consequência, o valor de RPM/tração é atualizado a uma taxa efetiva de aproximadamente $1\,Hz$.
+
+A amostragem é disparada por um \textit{timer} de hardware a $1024\,Hz$ (evitando o \textit{jitter} de uma amostragem por \textit{polling}, que corromperia diretamente a frequência de cada \textit{bin}) e conduzida via DMA para um único buffer de $1024$ amostras.
+
+Antecedendo o ADC, adicionou-se um filtro passa-baixas analógico com corte próximo a $400$-$500\,Hz$, prevenindo que ruído mecânico e de \textit{Electromagnetic Environmental Effects} (E3), presentes em frequências muito acima da banda de interesse, sejam sub-amostrados (\textit{aliasing}) para dentro da faixa de $0$ a $170\,Hz$.
+
+Antes da aplicação da FFT, o sinal é ponderado por uma janela de Hann, reduzindo o vazamento espectral (\textit{leakage}) que, na ausência de janelamento, tenderia a alargar ou deslocar o pico identificado. A busca pelo pico de magnitude é restrita à faixa de $10$ a $200\,Hz$, descartando componentes de baixa frequência e de fora da banda esperada antes da seleção do valor máximo, reduzindo a chance de detecção de picos de outras fontes de ruído do sistema.
+
+Já a deflexão das superfícies de controle é obtida a partir da tensão lida no divisor resistivo de cada sensor flexível (Seção \ref{subsec:sensores}). Como a resposta desse sensor é não linear e assimétrica em relação ao sentido de deflexão, a calibração é realizada antes de cada voo por meio de duas funções de mapeamento independentes, uma para deflexões positivas e outra para deflexões negativas, relacionando a tensão lida ao ângulo de deflexão da superfície correspondente.
+
+\subsubsection{Máquina de Estados}
+\label{subsec:maquinaEstados}
+
+Além da seleção física de modo de operação apresentada na seção de hardware, o \textit{firmware} do DAPU implementa uma máquina de estados responsável por organizar o comportamento do sistema ao longo da missão. Essa estrutura permite controlar a inicialização, a verificação dos sensores, o aquecimento do sistema, a operação nominal e o tratamento de falhas.
+
+Os principais estados definidos são:
+
+\begin{itemize}
+    \item \textit{\textbf{Boot}}: inicialização dos periféricos e configuração inicial do microcontrolador;
+    \item \textit{\textbf{Self-Test}}: verificação da comunicação com sensores e periféricos críticos, e inicialização dos parâmetros iniciais dos filtros;
+    \item \textit{\textbf{Warmup}}: etapa de estabilização e aquecimento dos sensores, especialmente do módulo GPS;
+    \item \textit{\textbf{Armed}}: sistema validado e pronto para operação;
+    \item \textit{\textbf{Flight}}: operação nominal, com aquisição de dados, estimação de estados e execução das rotinas de controle;
+    \item \textit{\textbf{Failsafe}}: estado acionado em caso de falha crítica, perda de comunicação ou comportamento inesperado do sistema.
+\end{itemize}
+
+A máquina de estados é executada por uma tarefa supervisora dedicada do DAPU. As demais tarefas não alteram diretamente o estado global do sistema; elas apenas sinalizam eventos, como falha de sensor, conclusão de inicialização ou disponibilidade de dados válidos. A tarefa supervisora interpreta esses eventos e realiza as transições necessárias.
+
+Essa abordagem reduz a possibilidade de condições de corrida e centraliza a lógica de decisão do sistema. Além disso, o \textit{watchdog} independente é atualizado periodicamente pela tarefa supervisora. Caso essa atualização deixe de ocorrer dentro do intervalo configurado, o microcontrolador é reinicializado, fornecendo uma camada adicional de proteção contra travamentos.
+
+Cabe destacar que essa máquina de estados rege o comportamento global do sistema, mas não o modo de controle da aeronave: a decisão entre operação manual e autônoma, dentro do estado \textit{Flight}, é feita pelo piloto e gerenciada de forma independente pelo GNCU (Seção \ref{subsec:modoManualAutonomo}). A comunicação entre as duas máquinas ocorre em uma única via: caso o DAPU transite para o estado \textit{Failsafe}, esse evento é sinalizado ao GNCU pelo enlace SPI (Seção \ref{subsec:interfaceSubsistemas}), que força o retorno ao modo manual independentemente da seleção do piloto.
+
+\subsubsection{\textit{Health Management}}
+\label{subsec:healthManagement}
+
+Complementarmente à máquina de estados, e atendendo ao requisito RF.08, o DAPU implementa uma rotina de \textit{health management} responsável por monitorar continuamente a integridade dos subsistemas, sinalizando eventos de falha à tarefa supervisora descrita na seção anterior. Enquanto o \textit{watchdog} protege o sistema contra travamentos do \textit{firmware}, o \textit{health management} atua em um nível acima, verificando se os subsistemas seguem operando dentro do comportamento esperado mesmo com o \textit{firmware} em execução normal.
+
+O monitoramento abrange três categorias de verificação:
+
+\begin{itemize}
+    \item \textbf{Comunicação dos sensores}: cada sensor é verificado quanto à ocorrência de \textit{timeout} de comunicação (ausência de resposta dentro do intervalo esperado) e, quando aplicável, quanto à validade do dado recebido (por exemplo, verificação de \textit{checksum} das mensagens);
+    \item \textbf{Prazos das tarefas do RTOS}: o cumprimento dos períodos de execução de cada tarefa do DAPU (Tabela \ref{Tab:RTOSPrioridadesDAPU}) é monitorado, permitindo identificar estouros de prazo que possam comprometer o desempenho do sistema;
+    \item \textbf{Tensão de alimentação}: a tensão da bateria é monitorada por meio de um divisor resistivo lido pelo ADC, sinalizando condições de sub ou sobretensão que possam comprometer a operação do sistema.
+\end{itemize}
+
+Para evitar que ruídos ou variações transitórias disparem ações desnecessárias, uma falha só é considerada válida após ser detectada em, no mínimo, duas verificações consecutivas, mesma filosofia de \textit{debounce} adotada para o chaveamento entre os modos manual e autônomo (Seção \ref{subsec:modoManualAutonomo}).
+
+Uma vez confirmada, cada falha é classificada em duas categorias de severidade:
+
+\begin{itemize}
+    \item \textbf{Falhas críticas}: falhas de comunicação com sensores essenciais à estimativa de atitude, posição e altitude (GPS, IMUs e barômetros), estouros de prazo em tarefas de controle ou tensão de alimentação fora da faixa aceitável. A confirmação de uma falha crítica aciona imediatamente o estado de \textit{Failsafe};
+    \item \textbf{Falhas não críticas}: falhas em sensores auxiliares (AOA, estimativa de tração e deflexão das superfícies), que não comprometem a guiagem da aeronave. Essas falhas são apenas sinalizadas, por meio do LED de status dos sensores e reportadas à CGU, sem acionar o \textit{Failsafe}.
+\end{itemize}
+
+Durante os estados de \textit{Self-Test} e \textit{Warmup}, o \textit{health management} realiza uma verificação mais abrangente de todos os subsistemas antes de permitir a transição para o estado \textit{Armed}, sendo essa validação também refletida no LED de status dos sensores, que só se acende após a confirmação de que todos os testes foram concluídos com sucesso. Já durante o estado \textit{Flight}, o monitoramento permanece ativo em segundo plano de forma mais leve, com o objetivo de identificar falhas ao longo do voo; nesse estado, o LED de status dos sensores reflete simplesmente se todos os sensores seguem inicializados e recebendo dados.
+
+\subsection{GNCU}
+\label{subsec:gncuTarefas}
+
+No GNCU, cada malha e submalha da arquitetura de guiagem e controle apresentada no capítulo \ref{chap:guiagemEcontrole} é implementada como uma tarefa independente: o \textit{Path Manager} e o \textit{Path Following} compõem o nível \textit{High Level}, responsável por gerar as referências de curso ($\chi_c$) e altitude ($h_c$); já o nível \textit{Low Level} é composto pelas malhas interna e externa do \textit{autopilot} de cada eixo (rolamento/curso via aileron, arfagem/altitude via profundor) e pela malha de coordenação de curva via leme, sendo a atuação sobre a superfície de controle correspondente realizada ao final da execução de cada malha interna.
+
+Como os servos das superfícies de controle operam com um período de PWM padrão de 50 Hz, executar as malhas internas a uma taxa superior não seria representativo, uma vez que o comando não seria efetivamente aplicado ao atuador antes do próximo quadro de PWM; assim, as malhas internas e, por questões de segurança, também a frequência de leitura do receptor RC. Já as malhas externas e o nível \textit{High Level} de guiagem operam a uma taxa aproximadamente 10 vezes menor (5 Hz), respeitando o princípio de separação de bandas adotado (Capítulo \ref{chap:guiagemEcontrole}). A leitura do IMU de \textit{backup} (BNO055) segue sua taxa nativa de 100 Hz, independente da cadência das malhas de controle, de modo a manter a redundância de atitude sempre atualizada.
+
+\begin{table}[H]
+\centering
+\caption{Prioridade de cada tarefa do GNCU no RTOS.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\textbf{Tarefa}} &
+\multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+Coletar dados (receptor RC) & 10 \\ \hline
+IMU \textit{backup} (BNO055) & 9 \\ \hline
+Profundor - malha interna ($\theta$) & 8 \\ \hline
+Aileron - malha interna ($\phi$) & 7 \\ \hline
+Leme - malha de coordenação ($\beta$)& 6 \\ \hline
+Profundor - malha externa ($h$) & 5 \\ \hline
+Aileron - malha externa ($\chi$) & 4 \\ \hline
+\textit{Path Following} & 3 \\ \hline
+\textit{Path Manager} & 2 \\ \hline
+Transmitir dado & 1 \\ \hline
+\end{tabular}
+\label{Tab:RTOSPrioridadesGNCU}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+\subsubsection{Modo Manual e Modo Autônomo}
+\label{subsec:modoManualAutonomo}
+
+A lógica de controle foi desenvolvida considerando dois modos principais de operação: modo manual e modo autônomo. No modo manual, os comandos provenientes do receptor de rádio controle são repassados diretamente aos atuadores, permitindo que o piloto mantenha controle total da aeronave.
+
+No modo autônomo, os comandos das superfícies de controle são calculados pelo GNCU a partir das estimativas de estado fornecidas pelo DAPU e das referências geradas pelo sistema de guiagem. Nesse caso, as malhas de controle atuam sobre profundor, aileron e leme, de acordo com a arquitetura de controle definida anteriormente.
+
+Por questões de segurança, o modo autônomo não é ativado por padrão durante a inicialização. A ativação depende de um comando explícito do piloto por meio de um canal dedicado do rádio controle. Além disso, a leitura do comando manual permanece ativa mesmo durante a operação autônoma, permitindo a retomada do controle manual a qualquer instante.
+
+A transição para o modo autônomo é realizada apenas após a confirmação de múltiplas leituras consecutivas do canal de modo, evitando ativações indevidas causadas por ruídos ou variações transitórias no sinal PWM. Já a transição de volta para o modo manual é imediata, uma vez que representa uma ação de segurança e deve ocorrer com a menor latência possível. Essa transição imediata também é forçada pelo DAPU em caso de \textit{Failsafe} (Seção \ref{subsec:maquinaEstados}), independentemente da seleção do piloto, garantindo que uma falha crítica no sistema de estimação de estados não deixe a aeronave em modo autônomo sem supervisão adequada.
+
+\subsection{CGU}
+
+A CGU (\textit{Communication Gateway Unit}) atua como interface de comunicação e supervisão externa do sistema, sendo responsável pela transmissão da telemetria e pelo recebimento de parâmetros e comandos básicos enviados pelo usuário (Tabela \ref{tab:SubSis_Functions}). Diferentemente do DAPU e do GNCU, a CGU não participa da malha de controle em tempo real, de modo que eventuais atrasos em sua execução não comprometem a guiagem da aeronave (Seção \ref{subsec:interfaceSubsistemas}).
+
+A comunicação com o DAPU ocorre via UART, por meio da qual a CGU recebe os dados de telemetria de alto nível da aeronave (posição, altitude, atitude e velocidade), além do status dos sensores e do resultado do monitoramento de integridade do sistema (\textit{health management}), utilizados, por exemplo, para indicar ao usuário o andamento do processo de \textit{warmup} antes do voo (Seção \ref{subsec:PDN}).
+
+O \textit{firmware} da CGU é estruturado em três tarefas (Tabela \ref{Tab:RTOSPrioridadesCGU}): a coleta dos dados recebidos do DAPU, a disponibilização de um servidor web (\textit{WebServer}) para consulta da telemetria pelo usuário, e a transmissão desses dados via Wi-Fi.
+
+\begin{table}[H]
+\centering
+\caption{Prioridade de cada tarefa da CGU no RTOS.}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{C0C0C0} 
+\multicolumn{1}{|c|}{\textbf{Tarefa}} &
+\multicolumn{1}{c|}{\textbf{Prioridade}} \\ \hline
+Coletar dados & 3 \\ \hline
+WebServer & 2 \\ \hline
+Transmitir dado & 1 \\ \hline
+\end{tabular}
+\label{Tab:RTOSPrioridadesCGU}
+\caption*{Fonte: Produzido pelo autor.}
+\end{table}
+
+Como a CGU não executa nenhuma rotina crítica à guiagem da aeronave, o uso do RTOS nessa unidade tem como principal objetivo organizar a concorrência entre a coleta de dados e o atendimento às requisições do servidor web, e não garantir determinismo temporal estrito como nas demais unidades. A estrutura de dados de telemetria e a interface do servidor web ainda não foram completamente detalhadas neste trabalho, sendo apontadas como oportunidade de desenvolvimento futuro.
+
+\subsection{Verificação e Validação}
+\label{subsec:validacaoEKF}
+
+A verificação do \textit{firmware} foi conduzida de forma incremental, utilizando hardware funcional representativo (placas de desenvolvimento e protótipos em bancada), uma vez que o cronograma do projeto não permitiu a fabricação da PCB final a tempo de sua utilização nos ensaios deste trabalho. Dessa forma, o escopo da validação aqui apresentada concentra-se na demonstração funcional dos algoritmos de aquisição, processamento e filtragem em nível de subsistema, ficando a integração multi-subsistema na PCB final e os ensaios em voo como etapas subsequentes do desenvolvimento.
+
+Inicialmente, cada sensor foi testado individualmente, verificando a comunicação com o microcontrolador e a taxa de amostragem efetiva obtida, comparada à taxa nominal definida pela tarefa correspondente do RTOS (RF.01, RP.01). Os resultados dessa caracterização são apresentados na forma de uma tabela comparativa entre taxa configurada e taxa medida para cada sensor (Capítulo \ref{FALTA_LABEL_RESULTADOS}).
+
+Complementarmente, a plausibilidade física dos dados adquiridos foi avaliada de forma qualitativa por meio da análise gráfica da leitura de sensores selecionados ao longo do tempo, sob excitação controlada (por exemplo, movimentação manual do sensor ou variação controlada de altura), permitindo verificar a coerência do sinal obtido frente ao estímulo aplicado (RF.01, RF.03).
+
+A validação do filtro de altitude (Seção \ref{subsec:processamentoEstimacao}) foi conduzida por meio de um teste estático em bancada, no qual variações controladas de altura foram aplicadas em relação a uma referência conhecida (régua/mesa graduada). Comparou-se o erro RMS da estimativa filtrada ao erro RMS do barômetro isolado, permitindo demonstrar quantitativamente o ganho da fusão sensorial frente ao uso do sensor bruto (RF.03). A validação dos filtros de atitude e de velocidade/posição não foi realizada neste trabalho, uma vez que dependem, respectivamente, de uma referência de atitude confiável e de deslocamento real da aeronave (GPS e Pitot), sendo apontadas como etapa subsequente do desenvolvimento.
+
+Durante os testes, foram observados três aspectos principais: a consistência dos dados medidos, o cumprimento das frequências de amostragem definidas e a resposta do sistema diante de falhas simuladas. Para sensores críticos, a desconexão ou ausência de resposta deve ser identificada pela tarefa supervisora, permitindo a transição para um estado seguro.
+
+Também foram avaliadas as rotinas de chaveamento entre modo manual e modo autônomo, verificando se o piloto mantém a capacidade de retomar o controle da aeronave a qualquer momento. Essa validação é essencial para garantir que a autonomia seja implementada de forma incremental e reversível, sem comprometer a segurança da operação.

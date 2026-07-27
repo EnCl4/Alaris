@@ -1,0 +1,14 @@
+../Core/Src/dapu_log.c:30:24:ring_used	4	static
+../Core/Src/dapu_log.c:35:24:ring_free	8	static
+../Core/Src/dapu_log.c:55:6:log_init_rtos	8	static
+../Core/Src/dapu_log.c:64:17:crc16_ccitt	24	static
+../Core/Src/dapu_log.c:84:13:build_record	16	static
+../Core/Src/dapu_log.c:171:6:log_sample	248	static
+../Core/Src/dapu_log.c:216:13:write_header	1048	static
+../Core/Src/dapu_log.c:235:6:log_open	48	static
+../Core/Src/dapu_log.c:290:6:log_close	24	static
+../Core/Src/dapu_log.c:326:6:log_is_open	4	static
+../Core/Src/dapu_log.c:335:6:log_service	24	static
+../Core/Src/dapu_log.c:393:10:log_dropped_records	4	static
+../Core/Src/dapu_log.c:394:10:log_written_records	4	static
+../Core/Src/dapu_log.c:395:13:log_filename	4	static
