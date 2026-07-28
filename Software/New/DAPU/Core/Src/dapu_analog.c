@@ -60,6 +60,13 @@ void analog_start(void)
     }
 }
 
+bool analog_is_running(uint32_t settle_ms)
+{
+    uint32_t before = __HAL_DMA_GET_COUNTER(hadc1.DMA_Handle);
+    osDelay(settle_ms);
+    return (__HAL_DMA_GET_COUNTER(hadc1.DMA_Handle) != before);
+}
+
 /** Index of the scan the DMA is about to write (i.e. one past the newest). */
 static uint32_t current_scan_index(void)
 {

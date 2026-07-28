@@ -1,5 +1,5 @@
 ../Core/Src/spi.c:32:6:MX_SPI1_Init	8	static
-../Core/Src/spi.c:78:6:MX_SPI2_Init	8	static
-../Core/Src/spi.c:120:6:MX_SPI4_Init	8	static
-../Core/Src/spi.c:162:6:HAL_SPI_MspInit	248	static
-../Core/Src/spi.c:273:6:HAL_SPI_MspDeInit	16	static
+../Core/Src/spi.c:76:6:MX_SPI2_Init	8	static
+../Core/Src/spi.c:118:6:MX_SPI4_Init	8	static
+../Core/Src/spi.c:160:6:HAL_SPI_MspInit	248	static
+../Core/Src/spi.c:271:6:HAL_SPI_MspDeInit	16	static

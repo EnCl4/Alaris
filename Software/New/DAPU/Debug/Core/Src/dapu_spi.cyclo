@@ -1,3 +1,10 @@
-../Core/Src/dapu_spi.c:15:6:dapu_spi_init	1
-../Core/Src/dapu_spi.c:20:6:dapu_spi_lock	3
-../Core/Src/dapu_spi.c:28:6:dapu_spi_unlock	3
+../Core/Src/dapu_spi.c:17:6:dapu_spi_init	1
+../Core/Src/dapu_spi.c:22:6:dapu_spi_lock	3
+../Core/Src/dapu_spi.c:30:6:dapu_spi_unlock	3
+../Core/Src/dapu_spi.c:54:16:pin_index	1
+../Core/Src/dapu_spi.c:70:20:miso_name	5
+../Core/Src/dapu_spi.c:81:21:miso_probe	7
+../Core/Src/dapu_spi.c:121:13:miso_line_test	4
+../Core/Src/dapu_spi.c:172:6:dapu_spi_diagnose	8
+../Core/Src/dapu_spi.c:255:6:dapu_spi_cs_wiggle	3
+../Core/Src/dapu_spi.c:284:6:dapu_spi_txrx	4

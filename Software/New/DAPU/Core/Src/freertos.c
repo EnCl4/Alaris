@@ -70,77 +70,77 @@ const osThreadAttr_t Boot_attributes = {
 osThreadId_t SD_WriterHandle;
 const osThreadAttr_t SD_Writer_attributes = {
   .name = "SD_Writer",
-  .stack_size = 1024 * 8,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityHigh7,
 };
 /* Definitions for LogSample */
 osThreadId_t LogSampleHandle;
 const osThreadAttr_t LogSample_attributes = {
   .name = "LogSample",
-  .stack_size = 512 * 8,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh6,
 };
 /* Definitions for GPS */
 osThreadId_t GPSHandle;
 const osThreadAttr_t GPS_attributes = {
   .name = "GPS",
-  .stack_size = 512 * 8,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal7,
 };
 /* Definitions for IMU */
 osThreadId_t IMUHandle;
 const osThreadAttr_t IMU_attributes = {
   .name = "IMU",
-  .stack_size = 512 * 8,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal6,
 };
 /* Definitions for Pitot */
 osThreadId_t PitotHandle;
 const osThreadAttr_t Pitot_attributes = {
   .name = "Pitot",
-  .stack_size = 256 * 8,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal4,
 };
 /* Definitions for BMP280 */
 osThreadId_t BMP280Handle;
 const osThreadAttr_t BMP280_attributes = {
   .name = "BMP280",
-  .stack_size = 384 * 8,
+  .stack_size = 768 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal3,
 };
 /* Definitions for MS5611 */
 osThreadId_t MS5611Handle;
 const osThreadAttr_t MS5611_attributes = {
   .name = "MS5611",
-  .stack_size = 384 * 8,
+  .stack_size = 768 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal2,
 };
 /* Definitions for AOA */
 osThreadId_t AOAHandle;
 const osThreadAttr_t AOA_attributes = {
   .name = "AOA",
-  .stack_size = 256 * 8,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for RPM */
 osThreadId_t RPMHandle;
 const osThreadAttr_t RPM_attributes = {
   .name = "RPM",
-  .stack_size = 512 * 8,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for Flex */
 osThreadId_t FlexHandle;
 const osThreadAttr_t Flex_attributes = {
   .name = "Flex",
-  .stack_size = 256 * 8,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for Console */
 osThreadId_t ConsoleHandle;
 const osThreadAttr_t Console_attributes = {
   .name = "Console",
-  .stack_size = 1024 * 8,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 
@@ -721,3 +721,4 @@ void vApplicationMallocFailedHook(void)
 }
 
 /* USER CODE END Application */
+

@@ -9,6 +9,18 @@
 #include "icm20948.h"
 #include "dapu_config.h"
 #include "dapu_spi.h"
+#include <string.h>
+
+#if ICM20948_USE_I2C
+#include "i2c.h"
+/* On its own bus the IMU has no contention: the acquisition task is the only
+ * caller once boot is done. */
+#define ICM_BUS_LOCK()		((void)0)
+#define ICM_BUS_UNLOCK()	((void)0)
+#else
+#define ICM_BUS_LOCK()		dapu_spi_lock()
+#define ICM_BUS_UNLOCK()	dapu_spi_unlock()
+#endif
 
 
 static float gyro_scale_factor;
@@ -23,10 +35,16 @@ static bool  ak09916_ready;
 #define ICM20948_WHO_AM_I_RETRIES   10u
 
 
-/* Static Functions */
-static void     cs_high();
-static void     cs_low();
+/* The bank register would otherwise be written on every single access, so it
+ * is cached. On I2C that halves the traffic of a sensor read, which matters at
+ * 200 Hz. 0xFF means "unknown", forcing the next access to re-select. */
+static uint8_t  s_bank_cache = 0xFFu;
 
+#if ICM20948_USE_I2C
+static bool     i2c_find_address(void);
+#endif
+
+/* Static Functions */
 static void     select_user_bank(userbank ub);
 
 static uint8_t  read_single_icm20948_reg(userbank ub, uint8_t reg);
@@ -58,8 +76,19 @@ bool icm20948_init(void)
 	uint32_t tries = ICM20948_WHO_AM_I_RETRIES;
 
 	icm20948_ready = false;
+	s_bank_cache   = 0xFFu;
 
-	dapu_spi_lock();
+	ICM_BUS_LOCK();
+
+#if ICM20948_USE_I2C
+	/* Find the module first: without an ACK there is no point clocking out
+	 * register reads, and this distinguishes "wrong address" from "silent". */
+	if(!i2c_find_address())
+	{
+		ICM_BUS_UNLOCK();
+		return false;
+	}
+#endif
 
 	while(tries-- > 0u && !icm20948_who_am_i())
 	{
@@ -67,7 +96,7 @@ bool icm20948_init(void)
 	}
 	if(!icm20948_who_am_i())
 	{
-		dapu_spi_unlock();
+		ICM_BUS_UNLOCK();
 		return false;
 	}
 
@@ -77,7 +106,10 @@ bool icm20948_init(void)
 	icm20948_clock_source(1);
 	icm20948_odr_align_enable();
 
+#if !ICM20948_USE_I2C
+	/* Sets I2C_IF_DIS - would switch off the very interface we are using. */
 	icm20948_spi_slave_enable();
+#endif
 
 	icm20948_gyro_low_pass_filter(0);
 	icm20948_accel_low_pass_filter(0);
@@ -91,7 +123,7 @@ bool icm20948_init(void)
 	icm20948_gyro_full_scale_select(ICM_GYRO_FULL_SCALE);
 	icm20948_accel_full_scale_select(ICM_ACCEL_FULL_SCALE);
 
-	dapu_spi_unlock();
+	ICM_BUS_UNLOCK();
 
 	icm20948_ready = true;
 	return true;
@@ -108,7 +140,7 @@ bool ak09916_init(void)
 		return false;
 	}
 
-	dapu_spi_lock();
+	ICM_BUS_LOCK();
 
 	icm20948_i2c_master_reset();
 	icm20948_i2c_master_enable();
@@ -120,7 +152,7 @@ bool ak09916_init(void)
 	}
 	if(!ak09916_who_am_i())
 	{
-		dapu_spi_unlock();
+		ICM_BUS_UNLOCK();
 		return false;
 	}
 
@@ -128,7 +160,7 @@ bool ak09916_init(void)
 	ak09916_operation_mode_setting(continuous_measurement_100hz);
 	ak09916_setup_continuous_read();
 
-	dapu_spi_unlock();
+	ICM_BUS_UNLOCK();
 
 	ak09916_ready = true;
 	return true;
@@ -137,17 +169,33 @@ bool ak09916_init(void)
 bool icm20948_present(void) { return icm20948_ready; }
 bool ak09916_present(void)  { return ak09916_ready;  }
 
+/* ACCEL_XOUT_H (0x2D) .. GYRO_ZOUT_L (0x38) are contiguous, so accelerometer
+ * and gyroscope come out of one 12 byte burst. That halves the bus traffic
+ * versus two separate reads - which matters on I2C at 200 Hz - and guarantees
+ * both come from the same sample instant. */
 bool icm20948_read_imu(axises* accel_g, axises* gyro_dps)
 {
+	uint8_t* b;
+
 	if(!icm20948_ready)
 	{
 		return false;
 	}
 
-	dapu_spi_lock();
-	icm20948_accel_read_g(accel_g);
-	icm20948_gyro_read_dps(gyro_dps);
-	dapu_spi_unlock();
+	ICM_BUS_LOCK();
+	b = read_multiple_icm20948_reg(ub_0, B0_ACCEL_XOUT_H, 12);
+	ICM_BUS_UNLOCK();
+
+	accel_g->x = (float)(int16_t)(b[0] << 8 | b[1]) / accel_scale_factor;
+	accel_g->y = (float)(int16_t)(b[2] << 8 | b[3]) / accel_scale_factor;
+	/* Scale factor added back because the calibration routine offsets out
+	 * gravity - same convention as the upstream library. */
+	accel_g->z = ((float)(int16_t)(b[4] << 8 | b[5]) + accel_scale_factor)
+	             / accel_scale_factor;
+
+	gyro_dps->x = (float)(int16_t)(b[6] << 8 | b[7])  / gyro_scale_factor;
+	gyro_dps->y = (float)(int16_t)(b[8] << 8 | b[9])  / gyro_scale_factor;
+	gyro_dps->z = (float)(int16_t)(b[10] << 8 | b[11]) / gyro_scale_factor;
 
 	return true;
 }
@@ -161,9 +209,9 @@ bool ak09916_read_mag_ut(axises* mag_ut)
 		return false;
 	}
 
-	dapu_spi_lock();
+	ICM_BUS_LOCK();
 	ok = ak09916_mag_read_uT(mag_ut);
-	dapu_spi_unlock();
+	ICM_BUS_UNLOCK();
 
 	return ok;
 }
@@ -237,9 +285,15 @@ bool ak09916_mag_read_uT(axises* data)
 
 
 /* Sub Functions */
+static uint8_t s_whoami_raw = 0xFF;
+
+uint8_t icm20948_whoami_raw(void) { return s_whoami_raw; }
+
 bool icm20948_who_am_i()
 {
 	uint8_t icm20948_id = read_single_icm20948_reg(ub_0, B0_WHO_AM_I);
+
+	s_whoami_raw = icm20948_id;
 
 	if(icm20948_id == ICM20948_ID)
 		return true;
@@ -261,6 +315,7 @@ void icm20948_device_reset()
 {
 	write_single_icm20948_reg(ub_0, B0_PWR_MGMT_1, 0x80 | 0x41);
 	HAL_Delay(100);
+	s_bank_cache = 0xFFu;	/* the reset puts the device back in bank 0 */
 }
 
 void ak09916_soft_reset()
@@ -516,79 +571,153 @@ void icm20948_accel_full_scale_select(accel_full_scale full_scale)
 
 
 /* Static Functions */
-static void cs_high()
+/* ---------------------------------------------------------------------------
+ * Bus abstraction
+ *
+ * Everything above this point is bus agnostic; only bus_read()/bus_write()
+ * know whether the device is on I2C1 or SPI1. Note the register address
+ * carries no direction bit on I2C - that is an SPI-only convention.
+ * ------------------------------------------------------------------------- */
+
+#if ICM20948_USE_I2C
+
+static uint8_t s_i2c_addr = (uint8_t)(ICM20948_I2C_ADDR << 1);
+
+uint8_t icm20948_i2c_address(void) { return (uint8_t)(s_i2c_addr >> 1); }
+
+/** Probes 0x68 and 0x69 (AD0 low / high) and latches whichever answers. */
+static bool i2c_find_address(void)
 {
-	HAL_GPIO_WritePin(ICM20948_SPI_CS_PIN_PORT, ICM20948_SPI_CS_PIN_NUMBER, GPIO_PIN_SET);	
+	static const uint8_t candidates[2] = { 0x68u, 0x69u };
+
+	for (uint32_t i = 0; i < 2u; i++)
+	{
+		uint8_t addr8 = (uint8_t)(candidates[i] << 1);
+
+		if (HAL_I2C_IsDeviceReady(&hi2c1, addr8, 3, 20) == HAL_OK)
+		{
+			s_i2c_addr = addr8;
+			return true;
+		}
+	}
+	return false;
 }
 
-static void cs_low()
+static bool bus_read(uint8_t reg, uint8_t* dst, uint8_t len)
 {
-	HAL_GPIO_WritePin(ICM20948_SPI_CS_PIN_PORT, ICM20948_SPI_CS_PIN_NUMBER, GPIO_PIN_RESET);
+	return (HAL_I2C_Mem_Read(&hi2c1, s_i2c_addr, reg,
+	                         I2C_MEMADD_SIZE_8BIT, dst, len, 50) == HAL_OK);
 }
+
+static bool bus_write(uint8_t reg, const uint8_t* src, uint8_t len)
+{
+	return (HAL_I2C_Mem_Write(&hi2c1, s_i2c_addr, reg,
+	                          I2C_MEMADD_SIZE_8BIT, (uint8_t*)src, len, 50) == HAL_OK);
+}
+
+#else	/* SPI1 */
+
+#define ICM_CS_PORT		ICM20948_SPI_CS_PIN_PORT
+#define ICM_CS_PIN		ICM20948_SPI_CS_PIN_NUMBER
+
+/* One full-duplex transaction per access. The upstream library used
+ * HAL_SPI_Transmit() followed by HAL_SPI_Receive(), which is fine on the F4 but
+ * breaks on the H7: the peripheral is disabled between the two calls, stopping
+ * and restarting SCK while CS is still low. See dapu_spi_txrx(). */
+static bool bus_read(uint8_t reg, uint8_t* dst, uint8_t len)
+{
+	uint8_t tx[DAPU_SPI_MAX_XFER];
+	uint8_t rx[DAPU_SPI_MAX_XFER];
+
+	if ((uint32_t)len + 1u > sizeof(tx))
+	{
+		return false;
+	}
+
+	memset(tx, 0xFF, (size_t)len + 1u);
+	tx[0] = READ | reg;
+
+	if (!dapu_spi_txrx(ICM_CS_PORT, ICM_CS_PIN, tx, rx, (uint16_t)(len + 1u)))
+	{
+		return false;
+	}
+
+	memcpy(dst, &rx[1], len);	/* first byte is the address echo */
+	return true;
+}
+
+static bool bus_write(uint8_t reg, const uint8_t* src, uint8_t len)
+{
+	uint8_t tx[DAPU_SPI_MAX_XFER];
+
+	if ((uint32_t)len + 1u > sizeof(tx))
+	{
+		return false;
+	}
+
+	tx[0] = WRITE | reg;
+	memcpy(&tx[1], src, len);
+
+	return dapu_spi_txrx(ICM_CS_PORT, ICM_CS_PIN, tx, NULL, (uint16_t)(len + 1u));
+}
+
+#endif	/* ICM20948_USE_I2C */
 
 static void select_user_bank(userbank ub)
 {
-	uint8_t write_reg[2];
-	write_reg[0] = WRITE | REG_BANK_SEL;
-	write_reg[1] = ub;
+	uint8_t value = (uint8_t)ub;
 
-	cs_low();
-	HAL_SPI_Transmit(ICM20948_SPI, write_reg, 2, 10);
-	cs_high();
+	if (value == s_bank_cache)
+	{
+		return;
+	}
+	if (bus_write(REG_BANK_SEL, &value, 1))
+	{
+		s_bank_cache = value;
+	}
+	else
+	{
+		s_bank_cache = 0xFFu;
+	}
 }
 
 static uint8_t read_single_icm20948_reg(userbank ub, uint8_t reg)
 {
-	uint8_t read_reg = READ | reg;
-	uint8_t reg_val;
+	uint8_t value = 0;
+
 	select_user_bank(ub);
+	(void)bus_read(reg, &value, 1);
 
-	cs_low();
-	HAL_SPI_Transmit(ICM20948_SPI, &read_reg, 1, 1000);
-	HAL_SPI_Receive(ICM20948_SPI, &reg_val, 1, 1000);
-	cs_high();
-
-	return reg_val;
+	return value;
 }
 
 static void write_single_icm20948_reg(userbank ub, uint8_t reg, uint8_t val)
 {
-	uint8_t write_reg[2];
-	write_reg[0] = WRITE | reg;
-	write_reg[1] = val;
-
 	select_user_bank(ub);
-
-	cs_low();
-	HAL_SPI_Transmit(ICM20948_SPI, write_reg, 2, 1000);
-	cs_high();
+	(void)bus_write(reg, &val, 1);
 }
 
 static uint8_t* read_multiple_icm20948_reg(userbank ub, uint8_t reg, uint8_t len)
 {
-	uint8_t read_reg = READ | reg;
-	/* 16 bytes: the magnetometer mirror needs 9, the IMU bursts need 6.
-	 * Shared static, only safe because every caller holds the bus mutex. */
+	/* 16 bytes: the magnetometer mirror needs 9, the IMU burst needs 12.
+	 * Shared static, only safe because there is a single caller at a time. */
 	static uint8_t reg_val[16];
-	select_user_bank(ub);
 
-	cs_low();
-	HAL_SPI_Transmit(ICM20948_SPI, &read_reg, 1, 1000);
-	HAL_SPI_Receive(ICM20948_SPI, reg_val, len, 1000);
-	cs_high();
+	if (len > sizeof(reg_val))
+	{
+		return reg_val;
+	}
+
+	select_user_bank(ub);
+	(void)bus_read(reg, reg_val, len);
 
 	return reg_val;
 }
 
 static void write_multiple_icm20948_reg(userbank ub, uint8_t reg, uint8_t* val, uint8_t len)
 {
-	uint8_t write_reg = WRITE | reg;
 	select_user_bank(ub);
-
-	cs_low();
-	HAL_SPI_Transmit(ICM20948_SPI, &write_reg, 1, 1000);
-	HAL_SPI_Transmit(ICM20948_SPI, val, len, 1000);
-	cs_high();
+	(void)bus_write(reg, val, len);
 }
 
 static uint8_t read_single_ak09916_reg(uint8_t reg)

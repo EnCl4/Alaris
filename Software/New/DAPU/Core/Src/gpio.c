@@ -53,8 +53,13 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|LED_BOARD_Pin|GPIO_PIN_4|BMP280_CS_Pin
-                          |ICM20948_CS_Pin|MS5611_CS_Pin|L_workingStatus_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|LED_BOARD_Pin|GPIO_PIN_4
+                          |L_workingStatus_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  /* All three chip selects idle HIGH. They share SPI1, so a CS left low keeps
+   * that device driving MISO and corrupts every other device's transfers. */
+  HAL_GPIO_WritePin(GPIOE, BMP280_CS_Pin|ICM20948_CS_Pin|MS5611_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
@@ -66,19 +71,37 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, LED_RUN_Pin|LED_SENSORS_Pin|LED_SD_Pin|LED_GNCU_Pin
                           |LED_CGU_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PE2 LED_BOARD_Pin PE4 BMP280_CS_Pin
-                           ICM20948_CS_Pin MS5611_CS_Pin L_workingStatus_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_2|LED_BOARD_Pin|GPIO_PIN_4|BMP280_CS_Pin
-                          |ICM20948_CS_Pin|MS5611_CS_Pin|L_workingStatus_Pin;
+  /*Configure GPIO pins : PE2 LED_BOARD_Pin PE4 L_workingStatus_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|LED_BOARD_Pin|GPIO_PIN_4
+                          |L_workingStatus_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PE11 (spare, not connected on the WeAct board) */
+  /*Configure GPIO pin : PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BMP280_CS_Pin ICM20948_CS_Pin MS5611_CS_Pin */
+  GPIO_InitStruct.Pin = BMP280_CS_Pin|ICM20948_CS_Pin|MS5611_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PE11 */
   GPIO_InitStruct.Pin = GPIO_PIN_11;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Buzzer_Pin */

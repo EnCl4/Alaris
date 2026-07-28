@@ -40,7 +40,8 @@ Core/Src/icm20948.o: ../Core/Src/icm20948.c ../Core/Inc/icm20948.h \
  ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
  ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h \
  ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h \
- ../Core/Inc/spi.h ../Core/Inc/dapu_config.h ../Core/Inc/dapu_spi.h
+ ../Core/Inc/spi.h ../Core/Inc/dapu_config.h ../Core/Inc/dapu_config.h \
+ ../Core/Inc/dapu_spi.h ../Core/Inc/i2c.h
 ../Core/Inc/icm20948.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
@@ -86,4 +87,6 @@ Core/Src/icm20948.o: ../Core/Src/icm20948.c ../Core/Inc/icm20948.h \
 ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h:
 ../Core/Inc/spi.h:
 ../Core/Inc/dapu_config.h:
+../Core/Inc/dapu_config.h:
 ../Core/Inc/dapu_spi.h:
+../Core/Inc/i2c.h:

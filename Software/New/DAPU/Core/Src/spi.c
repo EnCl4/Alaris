@@ -39,10 +39,6 @@ void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 1 */
 
   /* USER CODE END SPI1_Init 1 */
-  /* Shared sensor bus: BMP280 (PE7), ICM20948 (PE8), MS5611 (PE9).
-   * All three accept SPI mode 0. Kernel clock is PLL1Q = 100 MHz, so
-   * prescaler 16 gives 6.25 MHz - under the ICM20948's 7 MHz limit and well
-   * under the BMP280's 10 MHz and the MS5611's 20 MHz. */
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
@@ -63,7 +59,9 @@ void MX_SPI1_Init(void)
   hspi1.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
   hspi1.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
   hspi1.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
-  hspi1.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
+  /* AFCNTR: SPI1 keeps driving SCK/MOSI while the peripheral is disabled
+   * between transactions, so no spurious clock edge reaches the sensors. */
+  hspi1.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_ENABLE;
   hspi1.Init.IOSwap = SPI_IO_SWAP_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {

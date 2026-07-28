@@ -13,6 +13,7 @@
 #include "dapu_spi.h"
 #include "bmp280.h"
 #include <math.h>
+#include <string.h>
 
 #define BMP280_SPI              (&hspi1)
 #define BMP280_CS_PORT          BMP280_CS_GPIO_Port
@@ -45,35 +46,38 @@ static int16_t  dig_P2, dig_P3, dig_P4, dig_P5, dig_P6, dig_P7, dig_P8, dig_P9;
 
 static int32_t  t_fine;
 static bool     s_present;
+static uint8_t  s_chip_id;      /* last value read from BMP280_REG_ID */
 
 /* ---------------------------------------------------------------- bus ---- */
 
-static inline void cs_low(void)  { HAL_GPIO_WritePin(BMP280_CS_PORT, BMP280_CS_PIN, GPIO_PIN_RESET); }
-static inline void cs_high(void) { HAL_GPIO_WritePin(BMP280_CS_PORT, BMP280_CS_PIN, GPIO_PIN_SET);  }
-
+/* Single full-duplex transaction - see the comment on dapu_spi_txrx(). */
 static bool bmp280_read_regs(uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    uint8_t addr = reg | 0x80u;             /* MSB set = read */
-    bool ok;
+    uint8_t tx[DAPU_SPI_MAX_XFER];
+    uint8_t rx[DAPU_SPI_MAX_XFER];
 
-    cs_low();
-    ok  = (HAL_SPI_Transmit(BMP280_SPI, &addr, 1, 10) == HAL_OK);
-    ok &= (HAL_SPI_Receive(BMP280_SPI, buf, len, 50) == HAL_OK);
-    cs_high();
+    if ((uint32_t)len + 1u > sizeof(tx))
+    {
+        return false;
+    }
 
-    return ok;
+    memset(tx, 0xFF, (size_t)len + 1u);
+    tx[0] = reg | 0x80u;                    /* MSB set = read */
+
+    if (!dapu_spi_txrx(BMP280_CS_PORT, BMP280_CS_PIN, tx, rx, (uint16_t)(len + 1u)))
+    {
+        return false;
+    }
+
+    memcpy(buf, &rx[1], len);               /* first byte is the address echo */
+    return true;
 }
 
 static bool bmp280_write_reg(uint8_t reg, uint8_t data)
 {
-    uint8_t buf[2] = { (uint8_t)(reg & 0x7Fu), data };   /* MSB clear = write */
-    bool ok;
+    uint8_t tx[2] = { (uint8_t)(reg & 0x7Fu), data };    /* MSB clear = write */
 
-    cs_low();
-    ok = (HAL_SPI_Transmit(BMP280_SPI, buf, 2, 10) == HAL_OK);
-    cs_high();
-
-    return ok;
+    return dapu_spi_txrx(BMP280_CS_PORT, BMP280_CS_PIN, tx, NULL, 2);
 }
 
 /* --------------------------------------------------------------- init ---- */
@@ -111,6 +115,7 @@ bool bmp280_init(void)
     uint8_t id = 0;
 
     s_present = false;
+    s_chip_id = 0xFFu;
 
     dapu_spi_lock();
 
@@ -119,6 +124,8 @@ bool bmp280_init(void)
         dapu_spi_unlock();
         return false;
     }
+    s_chip_id = id;
+
     /* 0x58 = BMP280; 0x56/0x57 are pre-production samples. */
     if (id != 0x58u && id != 0x57u && id != 0x56u)
     {
@@ -155,6 +162,11 @@ bool bmp280_init(void)
 bool bmp280_present(void)
 {
     return s_present;
+}
+
+uint8_t bmp280_chip_id(void)
+{
+    return s_chip_id;
 }
 
 /* ---------------------------------------------------------- compensate --- */

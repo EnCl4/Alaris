@@ -124,6 +124,25 @@
  * IMU (ICM20948)
  * ========================================================================== */
 
+/* Bus selection. The SPI link to this module could not be made to work on the
+ * bench, so the IMU runs on its own I2C1 bus (PB8 SCL / PB9 SDA) while the
+ * barometers keep SPI1. Set to 0 to go back to SPI (CS on PE8).
+ *
+ * Trade-off: at 400 kHz one 12-byte burst costs ~375 us of blocking bus time
+ * per 200 Hz cycle, versus ~30 us on SPI. That is 7.5 % of the 5 ms period -
+ * acceptable, but it is why SPI is preferable on the final PCB. */
+#define ICM20948_USE_I2C             1
+
+/* 7-bit address: 0x68 with AD0 low, 0x69 with AD0 high. Both are probed at
+ * boot, so this is only the first one tried. */
+#define ICM20948_I2C_ADDR            0x68u
+
+/* I2C1 kernel clock is PCLK1 = 50 MHz.
+ *   0x40300A0E ~ 385 kHz (fast mode, default)
+ *   0x90301318 ~ 110 kHz (standard mode - use this if the wiring is marginal
+ *                         or the module has no on-board pull-ups) */
+#define ICM20948_I2C_TIMING          0x40300A0Eu
+
 /* RA.04 asks for +/-3 g and the airframe is slow in yaw: 8 g / 1000 dps
  * keeps good resolution with margin. */
 #define ICM_ACCEL_FULL_SCALE         _8g
@@ -156,6 +175,19 @@
 /* f_sync() period - bounds the data lost on a brutal power cut. */
 #define LOG_SYNC_PERIOD_MS           1000u
 #define LOG_FILE_PREFIX              "LOG"           /* LOG0001.BIN (8.3) */
+
+/* ==========================================================================
+ * Bring-up
+ * ========================================================================== */
+
+/* Bare-metal ICM20948 bus test, run from main() before the RTOS starts.
+ * Scans I2C (or sweeps SPI modes) and polls WHO_AM_I.
+ *   0 = off (normal operation)
+ *   1 = probe the bus, poll for a few seconds, then boot normally
+ *   2 = same, but stay in the polling loop forever
+ * Set back to 0 once the sensor answers. */
+#define ICM_BUS_SELFTEST             0
+#define ICM_BUS_SELFTEST_SECONDS     10u
 
 /* ==========================================================================
  * UART console (USART1)

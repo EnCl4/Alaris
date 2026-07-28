@@ -68,6 +68,8 @@ void DAPU_BlinkForever(uint8_t pulses);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LED_BOARD_Pin GPIO_PIN_3
+#define LED_BOARD_GPIO_Port GPIOE
 #define BMP280_CS_Pin GPIO_PIN_7
 #define BMP280_CS_GPIO_Port GPIOE
 #define ICM20948_CS_Pin GPIO_PIN_8
@@ -88,8 +90,6 @@ void DAPU_BlinkForever(uint8_t pulses);
 #define LED_GNCU_GPIO_Port GPIOB
 #define LED_CGU_Pin GPIO_PIN_7
 #define LED_CGU_GPIO_Port GPIOB
-#define LED_BOARD_Pin GPIO_PIN_3
-#define LED_BOARD_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 /* On-board LED of the WeAct core board (PE3). These boards wire the LED

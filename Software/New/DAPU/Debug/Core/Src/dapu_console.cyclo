@@ -1,7 +1,7 @@
-../Core/Src/dapu_console.c:30:5:_write	3
-../Core/Src/dapu_console.c:51:6:console_print_status	4
-../Core/Src/dapu_console.c:95:13:console_handle_command	7
-../Core/Src/dapu_console.c:137:6:console_plot	3
-../Core/Src/dapu_console.c:170:6:console_plot_enabled	1
-../Core/Src/dapu_console.c:179:6:console_init_rtos	1
-../Core/Src/dapu_console.c:185:6:HAL_UART_RxCpltCallback	2
+../Core/Src/dapu_console.c:31:5:_write	3
+../Core/Src/dapu_console.c:52:6:console_print_status	4
+../Core/Src/dapu_console.c:96:13:console_handle_command	9
+../Core/Src/dapu_console.c:148:6:console_plot	3
+../Core/Src/dapu_console.c:181:6:console_plot_enabled	1
+../Core/Src/dapu_console.c:190:6:console_init_rtos	1
+../Core/Src/dapu_console.c:196:6:HAL_UART_RxCpltCallback	2

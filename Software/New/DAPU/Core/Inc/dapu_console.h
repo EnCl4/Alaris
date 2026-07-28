@@ -9,6 +9,9 @@
   *   s  print a one line status summary
   *   q  flush and close the current log file (safe removal of the card)
   *   r  open a new log file
+  *   d  probe the SPI1 bus: read every sensor ID with CS asserted and with
+  *      CS idle, which separates a dead chip select from a dead MISO
+  *   w  square-wave each chip select in turn so the wire can be traced
   ******************************************************************************
   */
 

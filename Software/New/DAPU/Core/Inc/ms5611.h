@@ -24,6 +24,11 @@ bool  ms5611_init(void);
 /** true once ms5611_init() has succeeded. */
 bool  ms5611_present(void);
 
+/** Raw PROM word read during the last init, for diagnostics. All-zero or
+ *  all-ones means the bus is not returning data at all; plausible-looking
+ *  coefficients that still fail CRC point at a clocking problem. */
+uint16_t ms5611_prom_word(uint8_t index);
+
 /** Advance the conversion state machine. Call every 10 ms.
  *  @return true when a new compensated pair has just been produced. */
 bool  ms5611_step(void);

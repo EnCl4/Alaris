@@ -14,6 +14,12 @@
 /** Starts TIM2 and the circular ADC1 DMA scan. Call before the scheduler. */
 void  analog_start(void);
 
+/** Checks that the scan is really being clocked: samples the DMA counter,
+ *  waits settle_ms and samples it again. False means TIM2 is not producing
+ *  TRGO or the DMA is not moving, in which case every analog channel would
+ *  silently read a constant. */
+bool  analog_is_running(uint32_t settle_ms);
+
 /** Latest raw count of one channel (ADC_IDX_*). */
 uint16_t analog_latest(uint8_t ch);
 

@@ -43,12 +43,11 @@ void MX_SDMMC1_SD_Init(void)
   hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  /* Kernel clock is PLL1Q = 100 MHz and SDMMC_CK = kernel / (2 * ClockDiv),
-   * so ClockDiv = 2 gives 25 MHz. The previous value of 100 produced 500 kHz,
-   * roughly 250 kB/s, far below the ~45 kB/s x safety margin needed to log at
-   * 200 Hz without the ring buffer backing up during a card housekeeping
-   * pause. */
   hsd1.Init.ClockDiv = 2;
+  if (HAL_SD_Init(&hsd1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN SDMMC1_Init 2 */
   /* NOT an Error_Handler() call on purpose.
    *

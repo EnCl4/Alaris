@@ -25,14 +25,18 @@ void dapu_boot_init_sensors(void)
 
     printf("\r\n=== ALARIS DAPU - acquisition + logging build ===\r\n");
 
+    /* Every ABSENT is reported with the raw byte that caused it: 0x00 or 0xFF
+     * means MISO is stuck (wiring, CS, or the module not in SPI mode), while
+     * any other value means the bus is alive but mis-clocked. */
     if (bmp280_init())
     {
         status |= DAPU_ST_BMP280_OK;
-        printf("BMP280   : OK\r\n");
+        printf("BMP280   : OK (chip id 0x%02X)\r\n", bmp280_chip_id());
     }
     else
     {
-        printf("BMP280   : ABSENT\r\n");
+        printf("BMP280   : ABSENT (chip id 0x%02X, expected 0x58)\r\n",
+               bmp280_chip_id());
     }
 
     if (ms5611_init())
@@ -42,13 +46,18 @@ void dapu_boot_init_sensors(void)
     }
     else
     {
-        printf("MS5611   : ABSENT\r\n");
+        printf("MS5611   : ABSENT (PROM %04X %04X %04X)\r\n",
+               ms5611_prom_word(0), ms5611_prom_word(1), ms5611_prom_word(2));
     }
 
     if (icm20948_init())
     {
         status |= DAPU_ST_ICM20948_OK;
-        printf("ICM20948 : OK\r\n");
+#if ICM20948_USE_I2C
+        printf("ICM20948 : OK (I2C1, address 0x%02X)\r\n", icm20948_i2c_address());
+#else
+        printf("ICM20948 : OK (SPI1)\r\n");
+#endif
 
         if (ak09916_init())
         {
@@ -62,7 +71,8 @@ void dapu_boot_init_sensors(void)
     }
     else
     {
-        printf("ICM20948 : ABSENT\r\n");
+        printf("ICM20948 : ABSENT (WHO_AM_I 0x%02X, expected 0xEA)\r\n",
+               icm20948_whoami_raw());
     }
 
     if (gps_init())
@@ -186,6 +196,19 @@ void dapu_boot_run(void)
     analog_start();
     osDelay(50);                        /* let the first scans land */
 
+    /* Guard against the TIM2 trigger going missing: without it the DMA never
+     * advances and every analog channel reads a constant, which is easy to
+     * mistake for a wiring problem hours later. */
+    if (!analog_is_running(20u))
+    {
+        printf("ADC scan : NOT RUNNING - TIM2 TRGO or DMA1_Stream0 is dead\r\n");
+    }
+
+    /* Deselect every device on the shared SPI1 bus before the first probe. */
+    HAL_GPIO_WritePin(BMP280_CS_GPIO_Port,   BMP280_CS_Pin,   GPIO_PIN_SET);
+    HAL_GPIO_WritePin(ICM20948_CS_GPIO_Port, ICM20948_CS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MS5611_CS_GPIO_Port,   MS5611_CS_Pin,   GPIO_PIN_SET);
+
     dapu_boot_init_sensors();
     dapu_boot_calibrate();
 
@@ -194,7 +217,8 @@ void dapu_boot_run(void)
     s_boot_done = true;
 
     printf("Boot complete.\r\n"
-           "Console: 'p' plot on/off, 's' status, 'q' close log, 'r' new log\r\n");
+           "Console: 'p' plot, 's' status, 'q' close log, 'r' new log,\r\n"
+           "         'd' SPI bus probe, 'w' chip-select wiggle\r\n");
 }
 
 bool dapu_boot_complete(void)

@@ -21,6 +21,12 @@ bool  bmp280_init(void);
 /** true once bmp280_init() has succeeded. */
 bool  bmp280_present(void);
 
+/** Raw byte read back from the chip-ID register during the last init.
+ *  0x58 = healthy BMP280. 0x00 means MISO is stuck low (no device driving,
+ *  CS never asserted, or MISO not connected); 0xFF means it is stuck high or
+ *  floating; anything else points at a clocking / SPI mode problem. */
+uint8_t bmp280_chip_id(void);
+
 /** One coherent burst read of pressure + temperature.
  *  @param temp_c  [degC]
  *  @param press_pa [Pa]

@@ -65,16 +65,10 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION         1
 #define configUSE_IDLE_HOOK                      0
 #define configUSE_TICK_HOOK                      0
-/* Both turn a silent corruption into a blink code (see freertos.c). */
-#define configCHECK_FOR_STACK_OVERFLOW           2
-#define configUSE_MALLOC_FAILED_HOOK             1
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 56 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
-/* Task stacks alone are ~49 kB (see the attributes in freertos.c); this must
- * cover them plus the TCBs, mutexes, semaphores and the FatFS queue, or the
- * later osThreadNew() calls silently return NULL. */
 #define configTOTAL_HEAP_SIZE                    ((size_t)81920)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1

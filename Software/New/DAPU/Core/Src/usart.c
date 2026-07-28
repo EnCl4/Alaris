@@ -197,8 +197,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* USART1 interrupt Init - single byte console commands */
-    HAL_NVIC_SetPriority(USART1_IRQn, 6, 0);
+    /* USART1 interrupt Init */
+    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
@@ -243,7 +243,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
     /* USART2 DMA Init */
-    /* USART2_RX Init - circular ring, drained by the GPS task */
+    /* USART2_RX Init */
     hdma_usart2_rx.Instance = DMA1_Stream1;
     hdma_usart2_rx.Init.Request = DMA_REQUEST_USART2_RX;
     hdma_usart2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
@@ -262,7 +262,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_LINKDMA(uartHandle,hdmarx,hdma_usart2_rx);
 
     /* USART2 interrupt Init */
-    HAL_NVIC_SetPriority(USART2_IRQn, 6, 0);
+    HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE BEGIN USART2_MspInit 1 */
 

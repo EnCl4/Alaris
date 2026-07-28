@@ -76,6 +76,7 @@ void MX_ADC1_Init(void)
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   hadc1.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
   hadc1.Init.OversamplingMode = DISABLE;
+  hadc1.Init.Oversampling.Ratio = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -89,7 +90,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 1 - PA0 - aileron flex
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_16;
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -103,7 +104,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 2 - PA1 - angle of attack
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_17;
   sConfig.Rank = ADC_REGULAR_RANK_2;
@@ -112,7 +113,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 3 - PC0 - elevator flex
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = ADC_REGULAR_RANK_3;
@@ -121,7 +122,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 4 - PC1 - rudder flex
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = ADC_REGULAR_RANK_4;
@@ -130,7 +131,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 5 - PC4 - battery voltage
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_5;
@@ -139,7 +140,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 6 - PC5 - pitot
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = ADC_REGULAR_RANK_6;
@@ -148,7 +149,7 @@ void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure Regular Channel : rank 7 - PB1 - microphone
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_7;
@@ -162,35 +163,54 @@ void MX_ADC1_Init(void)
 
 }
 
-static uint32_t HAL_RCC_ADC12_CLK_ENABLED=0;
-
 void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
   if(adcHandle->Instance==ADC1)
   {
   /* USER CODE BEGIN ADC1_MspInit 0 */
 
   /* USER CODE END ADC1_MspInit 0 */
-    /* ADC1 clock enable */
-    HAL_RCC_ADC12_CLK_ENABLED++;
-    if(HAL_RCC_ADC12_CLK_ENABLED==1){
-      __HAL_RCC_ADC12_CLK_ENABLE();
+
+  /** Initializes the peripherals clock
+  */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    PeriphClkInitStruct.PLL2.PLL2M = 2;
+    PeriphClkInitStruct.PLL2.PLL2N = 16;
+    PeriphClkInitStruct.PLL2.PLL2P = 2;
+    PeriphClkInitStruct.PLL2.PLL2Q = 2;
+    PeriphClkInitStruct.PLL2.PLL2R = 2;
+    PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
+    PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+    PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
     }
 
+    /* ADC1 clock enable */
+    __HAL_RCC_ADC12_CLK_ENABLE();
+
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
     /**ADC1 GPIO Configuration
-    PA0     ------> ADC1_INP16
-    PA1     ------> ADC1_INP17
-    PB1     ------> ADC1_INP5
     PC0     ------> ADC1_INP10
     PC1     ------> ADC1_INP11
+    PA0     ------> ADC1_INP16
+    PA1     ------> ADC1_INP17
     PC4     ------> ADC1_INP4
     PC5     ------> ADC1_INP8
+    PB1     ------> ADC1_INP5
     */
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
     GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -200,11 +220,6 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     /* ADC1 DMA Init */
     /* ADC1 Init */
@@ -240,25 +255,22 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 
   /* USER CODE END ADC1_MspDeInit 0 */
     /* Peripheral clock disable */
-    HAL_RCC_ADC12_CLK_ENABLED--;
-    if(HAL_RCC_ADC12_CLK_ENABLED==0){
-      __HAL_RCC_ADC12_CLK_DISABLE();
-    }
+    __HAL_RCC_ADC12_CLK_DISABLE();
 
     /**ADC1 GPIO Configuration
-    PA0     ------> ADC1_INP16
-    PA1     ------> ADC1_INP17
-    PB1     ------> ADC1_INP5
     PC0     ------> ADC1_INP10
     PC1     ------> ADC1_INP11
+    PA0     ------> ADC1_INP16
+    PA1     ------> ADC1_INP17
     PC4     ------> ADC1_INP4
     PC5     ------> ADC1_INP8
+    PB1     ------> ADC1_INP5
     */
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5);
+
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_0|GPIO_PIN_1);
 
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_1);
-
-    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5);
 
     /* ADC1 DMA DeInit */
     HAL_DMA_DeInit(adcHandle->DMA_Handle);

@@ -27,10 +27,11 @@ Target: **STM32H723VGT6, WeAct Studio core board**, 200 MHz, HSE 25 MHz.
 
 | Function | Peripheral | Pins |
 |---|---|---|
-| Sensor bus | SPI1, mode 0, 6.25 MHz | PA5 SCK, PA6 MISO, PA7 MOSI |
-| BMP280 CS | GPIO | PE7 |
-| ICM20948 CS | GPIO | PE8 |
-| MS5611 CS | GPIO | PE9 |
+| Barometer bus | SPI1, mode 0, 6.25 MHz | PA5 SCK, PA6 MISO, PA7 MOSI |
+| BMP280 CS | GPIO, idle **high**, very high speed | PE7 |
+| MS5611 CS | GPIO, idle **high**, very high speed | PE9 |
+| **IMU bus** | **I2C1, ~385 kHz, address 0x68/0x69** | **PB8 SCL, PB9 SDA** |
+| ICM20948 CS | unused (SPI fallback only) | PE8 |
 | GPS NEO-M8N | USART2 + DMA1_Stream1 | PA2 TX, PD6 RX |
 | Console | USART1, 115200 | PA9 TX, PA10 RX |
 | SD card | SDMMC1, 4-bit, 25 MHz | PC8–PC12, PD2 |
@@ -91,8 +92,21 @@ STM32CubeIDE 13.3 toolchain links clean (175 kB flash, 126 kB RAM).
 no-op. **Before pressing "Generate Code" in CubeMX, check these seven things**,
 because a few of them were written into the `.ioc` by hand:
 
-1. **TIM2** is activated, Clock Source = *Internal Clock*, PSC = `0`,
-   Counter Period = `97655`, Trigger Event Selection = *Update Event*.
+1. **TIM2 is deliberately NOT in CubeMX.** It only emits TRGO — no pin, no
+   channel, no interrupt — and CubeMX refuses to treat that as a configured
+   peripheral: every regeneration drops it from the IP list, deletes the
+   `MX_TIM2_Init()` call and comments `HAL_TIM_MODULE_ENABLED` back out,
+   leaving `tim.c` orphaned and the build full of timer errors. Instead:
+   * `tim.c` / `tim.h` are maintained by hand
+   * `MX_TIM2_Init()` is called from `/* USER CODE BEGIN 2 */` in `main.c`
+   * `HAL_TIM_MODULE_ENABLED` is a **project preprocessor define** in
+     `.cproject`, not a setting in `stm32h7xx_hal_conf.h`
+
+   All three survive regeneration. Do **not** activate TIM2 in the GUI unless
+   you also delete the `MX_TIM2_Init()` call, or it will be initialised twice.
+   After any regeneration, confirm `ADC1.ExternalTrigConv` is still
+   `ADC_EXTERNALTRIG_T2_TRGO`; the Boot task prints `ADC scan : NOT RUNNING`
+   if the trigger has gone missing.
 2. **ADC1** has 7 ranks in the order of the table above, Scan Conversion Mode
    *Enabled*, Resolution 16 bit, Clock Prescaler *Asynchronous div 2*,
    External Trigger = *Timer 2 Trigger Out event*, rising edge,
@@ -102,10 +116,13 @@ because a few of them were written into the `.ioc` by hand:
    `USART2_RX` on DMA1 Stream1, byte/byte, circular.
 4. **NVIC**: DMA1 Stream0, DMA1 Stream1, SDMMC1, USART1 and USART2 interrupts
    all enabled.
-5. **FreeRTOS** → Config parameters → `TOTAL_HEAP_SIZE` = **40960**. The 11
-   tasks will not be created with the CubeMX default of 15360.
+5. **FreeRTOS** → Config parameters → `TOTAL_HEAP_SIZE` = **81920**. The 12
+   tasks need ~49 kB of stack alone and will not be created with the CubeMX
+   default of 15360; `osThreadNew()` returning NULL now trips `Error_Handler()`
+   rather than booting a half-populated system.
 6. **SDMMC1** ClockDiv = `2`.
-7. **SPI1**: 8 bits, CPOL Low, CPHA 1 Edge, Prescaler 16.
+7. **SPI1**: 8 bits, CPOL Low, CPHA 1 Edge, Prescaler 16, and *Master Keep IO
+   State* **enabled**.
 
 Also verify in *Project → Properties → C/C++ Build → Settings*:
 
@@ -116,9 +133,14 @@ Also verify in *Project → Properties → C/C++ Build → Settings*:
   `${workspace_loc:...}` path expands to an absolute Windows path that CubeIDE
   emits unquoted (`-LC:\GitHub\...`), and the build shell eats the backslashes,
   producing `cannot find -larm_cortexM7lfdp_math` even though the file is there.
+* **MCU GCC Compiler → Preprocessor** also defines `HAL_TIM_MODULE_ENABLED`
+  (see item 1 above)
 * **MCU/MPU Settings**: *Use float with printf from newlib-nano* is ticked —
   otherwise every `%f` prints blank. Note this is on the *MCU/MPU Settings*
   page, not under the linker.
+
+None of the four settings above live in the `.ioc`, so CubeMX cannot undo
+them — but a *fresh clone* of the project will not have them either.
 
 CMSIS-DSP (headers + the prebuilt Cortex-M7 hard-float archive) has already
 been copied into `Drivers/CMSIS/DSP/`. If linking it ever becomes a problem,
@@ -289,12 +311,29 @@ Worth recording in the report, with the reason:
    sampler only ever pushes into the ring, so a card housekeeping pause can
    never stretch the acquisition period — at worst it overflows the ring, which
    is counted and flagged in the record status.
-9. **`icm20948_init()` no longer spins forever** on a missing chip, and the
+9. **The ICM20948 is on I2C1, not SPI.** The SPI link to the module on the
+    bench could never be made to answer, so the IMU was moved to its own I2C
+    bus on PB8/PB9 while the barometers keep SPI1. `ICM20948_USE_I2C` in
+    `dapu_config.h` switches back. The cost is bus time: one 12-byte burst is
+    ~375 us at 385 kHz versus ~30 us on SPI, i.e. 7.5 % of the 5 ms period.
+    Acceptable on the bench; the final PCB should use SPI. Accelerometer and
+    gyroscope are read as a single 12-byte burst (`ACCEL_XOUT_H`..`GYRO_ZOUT_L`
+    are contiguous) and the user-bank register is cached, which together
+    halve the traffic and guarantee both come from the same sample instant.
+10. **All SPI register access is a single `HAL_SPI_TransmitReceive()`**, never
+    `HAL_SPI_Transmit()` followed by `HAL_SPI_Receive()`. The H7 SPI is a
+    different peripheral from the F4's: it is disabled at the end of every
+    `HAL_SPI_*` call, so a split read stops and restarts SCK in the middle of a
+    transaction with CS still asserted, and the slave sees spurious clock
+    edges. The same driver code works unchanged on an F4, which makes this a
+    trap when porting. `SPI_MASTER_KEEP_IO_STATE_ENABLE` (AFCNTR) is also set
+    on SPI1 so the pins stay driven while the peripheral is off.
+11. **`icm20948_init()` no longer spins forever** on a missing chip, and the
    accelerometer low-pass filter write, which the upstream library sent to the
    gyroscope register, is corrected. Full scales are ±8 g / ±1000 dps
    (`dapu_config.h`) rather than ±16 g / ±2000 dps, for resolution within the
    ±3 g of RA.04.
-10. **HAL timebase is still SysTick.** CubeMX will warn about this with
+12. **HAL timebase is still SysTick.** CubeMX will warn about this with
     FreeRTOS enabled; it works, and changing it was not worth the extra moving
     part in this build.
 

@@ -55,7 +55,7 @@ Core/Src/dapu_boot.o: ../Core/Src/dapu_boot.c ../Core/Inc/main.h \
  ../Core/Inc/dapu_types.h ../Core/Inc/dapu_analog.h \
  ../Core/Inc/dapu_boot.h ../Core/Inc/bmp280.h ../Core/Inc/ms5611.h \
  ../Core/Inc/icm20948.h ../Core/Inc/main.h ../Core/Inc/spi.h \
- ../Core/Inc/gps_ubx.h
+ ../Core/Inc/dapu_config.h ../Core/Inc/gps_ubx.h
 ../Core/Inc/main.h:
 ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -119,4 +119,5 @@ Core/Src/dapu_boot.o: ../Core/Src/dapu_boot.c ../Core/Inc/main.h \
 ../Core/Inc/icm20948.h:
 ../Core/Inc/main.h:
 ../Core/Inc/spi.h:
+../Core/Inc/dapu_config.h:
 ../Core/Inc/gps_ubx.h:

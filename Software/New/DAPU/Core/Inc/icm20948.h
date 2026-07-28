@@ -12,6 +12,7 @@
 
 #include "main.h"			// pin labels from stm32cubemx code generate
 #include "spi.h"			// header from stm32cubemx code generate
+#include "dapu_config.h"	// ICM20948_USE_I2C and the full-scale settings
 #include <stdbool.h>
 
 
@@ -80,6 +81,15 @@ bool ak09916_init(void);
 // True once the corresponding init has succeeded.
 bool icm20948_present(void);
 bool ak09916_present(void);
+
+// Raw byte last read from WHO_AM_I. 0xEA = healthy ICM20948; 0x00 or 0xFF
+// means the bus is not returning data, i.e. wiring rather than configuration.
+uint8_t icm20948_whoami_raw(void);
+
+#if ICM20948_USE_I2C
+// 7-bit I2C address the device actually answered on (0x68 or 0x69).
+uint8_t icm20948_i2c_address(void);
+#endif
 
 // Bus-locked, task facing reads. These take the shared SPI1 mutex once and
 // must NOT be called with the bus already locked.

@@ -24,13 +24,16 @@
 #include "fatfs.h"
 #include "sdmmc.h"
 #include "spi.h"
-#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "dapu_state.h"
+#include "dapu_config.h"
+#include "icm_bus_selftest.h"
+#include "i2c.h"
+#include "tim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +59,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void PeriphCommonClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
@@ -102,9 +104,6 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
-
   /* USER CODE BEGIN SysInit */
   dapu_micros_init();
   /* USER CODE END SysInit */
@@ -121,12 +120,46 @@ int main(void)
   MX_SPI4_Init();
   MX_USART3_UART_Init();
   MX_ADC1_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  /* TIM2 is maintained by hand, outside CubeMX.
+   *
+   * It only needs to emit TRGO at 1024 Hz to clock the ADC scan - no pin, no
+   * channel, no interrupt - and CubeMX will not accept that as a configured
+   * peripheral: every regeneration drops it from the IP list, removes this
+   * call and comments HAL_TIM_MODULE_ENABLED back out, leaving tim.c orphaned
+   * and the build broken. Keeping the init here (a USER CODE section) and
+   * defining HAL_TIM_MODULE_ENABLED in the project settings makes it survive.
+   *
+   * If you ever do activate TIM2 in the CubeMX GUI, delete this call so it is
+   * not initialised twice. */
+  MX_TIM2_Init();
+
+#if ICM20948_USE_I2C
+  /* I2C1 on PB8/PB9 carries the IMU, after the SPI link to that module could
+   * not be made to work.
+   *
+   * hi2c1 lives in .bss, so Instance is NULL until something initialises it:
+   * this call therefore runs only when CubeMX did *not* generate one above.
+   * That makes the code correct whether or not I2C1 survives in the .ioc,
+   * without any risk of initialising the peripheral twice. */
+  if (hi2c1.Instance == NULL)
+  {
+    MX_I2C1_Init();
+  }
+#endif
+
   /* First sign of life: clock tree, GPIO and every peripheral init survived.
    * The LED stays solid through the ~3 s sensor probe and calibration, then
    * starts blinking at 1 Hz once the 200 Hz task is running. */
   HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, LED_BOARD_ON);
+
+#if ICM_BUS_SELFTEST
+  /* Bring-up only: proves the SPI link to the ICM20948 with nothing else in
+   * the way. Runs here, before the RTOS, so no task, mutex or driver can be
+   * blamed for the result. Set ICM_BUS_SELFTEST to 0 in dapu_config.h when
+   * the sensor answers. */
+  icm_bus_selftest_run();
+#endif
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -166,9 +199,9 @@ void SystemClock_Config(void)
   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-  /* Unbounded in the CubeMX template. If the board is wired for SMPS rather
-   * than the LDO selected above, VOSRDY never sets and the original loop hangs
-   * here forever with no diagnostic at all. */
+  /* Unbounded in the CubeMX template, and outside any USER CODE block, so
+   * this guard is lost on every regeneration - re-add it if the board ever
+   * goes dark with no blink code again. */
   {
     uint32_t vos_start = HAL_GetTick();
     while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY))
@@ -214,32 +247,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
-void PeriphCommonClock_Config(void)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-  PeriphClkInitStruct.PLL2.PLL2M = 2;
-  PeriphClkInitStruct.PLL2.PLL2N = 16;
-  PeriphClkInitStruct.PLL2.PLL2P = 2;
-  PeriphClkInitStruct.PLL2.PLL2Q = 2;
-  PeriphClkInitStruct.PLL2.PLL2R = 2;
-  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
-  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }

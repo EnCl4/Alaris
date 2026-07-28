@@ -41,47 +41,31 @@ static float    s_press_pa = 0.0f;
 
 /* ---------------------------------------------------------------- bus ---- */
 
-static inline void cs_low(void)  { HAL_GPIO_WritePin(MS5611_CS_PORT, MS5611_CS_PIN, GPIO_PIN_RESET); }
-static inline void cs_high(void) { HAL_GPIO_WritePin(MS5611_CS_PORT, MS5611_CS_PIN, GPIO_PIN_SET);  }
-
+/* Single full-duplex transactions - see the comment on dapu_spi_txrx(). */
 static bool ms5611_command(uint8_t cmd)
 {
-    bool ok;
-
-    cs_low();
-    ok = (HAL_SPI_Transmit(MS5611_SPI, &cmd, 1, 10) == HAL_OK);
-    cs_high();
-
-    return ok;
+    return dapu_spi_txrx(MS5611_CS_PORT, MS5611_CS_PIN, &cmd, NULL, 1);
 }
 
 static bool ms5611_read_prom_word(uint8_t address, uint16_t *out)
 {
-    uint8_t cmd = (uint8_t)(MS5611_CMD_PROM_READ | (address << 1));
-    uint8_t rx[2] = { 0, 0 };
-    bool ok;
+    uint8_t tx[3] = { (uint8_t)(MS5611_CMD_PROM_READ | (address << 1)), 0xFF, 0xFF };
+    uint8_t rx[3] = { 0, 0, 0 };
 
-    cs_low();
-    ok  = (HAL_SPI_Transmit(MS5611_SPI, &cmd, 1, 10) == HAL_OK);
-    ok &= (HAL_SPI_Receive(MS5611_SPI, rx, 2, 10) == HAL_OK);
-    cs_high();
+    bool ok = dapu_spi_txrx(MS5611_CS_PORT, MS5611_CS_PIN, tx, rx, 3);
 
-    *out = (uint16_t)((rx[0] << 8) | rx[1]);
+    *out = (uint16_t)((rx[1] << 8) | rx[2]);
     return ok;
 }
 
 static bool ms5611_read_adc(uint32_t *out)
 {
-    uint8_t cmd = MS5611_CMD_ADC_READ;
-    uint8_t rx[3] = { 0, 0, 0 };
-    bool ok;
+    uint8_t tx[4] = { MS5611_CMD_ADC_READ, 0xFF, 0xFF, 0xFF };
+    uint8_t rx[4] = { 0, 0, 0, 0 };
 
-    cs_low();
-    ok  = (HAL_SPI_Transmit(MS5611_SPI, &cmd, 1, 10) == HAL_OK);
-    ok &= (HAL_SPI_Receive(MS5611_SPI, rx, 3, 10) == HAL_OK);
-    cs_high();
+    bool ok = dapu_spi_txrx(MS5611_CS_PORT, MS5611_CS_PIN, tx, rx, 4);
 
-    *out = ((uint32_t)rx[0] << 16) | ((uint32_t)rx[1] << 8) | (uint32_t)rx[2];
+    *out = ((uint32_t)rx[1] << 16) | ((uint32_t)rx[2] << 8) | (uint32_t)rx[3];
 
     /* The ADC returns 0 if it is read before the conversion has finished. */
     return ok && (*out != 0u);
@@ -180,6 +164,11 @@ bool ms5611_init(void)
 bool ms5611_present(void)
 {
     return s_present;
+}
+
+uint16_t ms5611_prom_word(uint8_t index)
+{
+    return (index < 8u) ? s_prom[index] : 0u;
 }
 
 /* -------------------------------------------------------- compensation --- */

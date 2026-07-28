@@ -12,6 +12,7 @@
 #include "dapu_state.h"
 #include "dapu_log.h"
 #include "dapu_console.h"
+#include "dapu_spi.h"
 #include "gps_ubx.h"
 #include <stdio.h>
 #include <string.h>
@@ -111,6 +112,16 @@ static void console_handle_command(char c)
     case 'Q':
         log_close();
         printf("\r\n[log closed - card can be removed]\r\n");
+        break;
+
+    case 'd':
+    case 'D':
+        dapu_spi_diagnose();
+        break;
+
+    case 'w':
+    case 'W':
+        dapu_spi_cs_wiggle(3000u);
         break;
 
     case 'r':

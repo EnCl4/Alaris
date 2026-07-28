@@ -52,10 +52,10 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
  ../Core/Inc/dapu_config.h ../Core/Inc/dapu_state.h \
- ../Core/Inc/dapu_types.h ../Core/Inc/dapu_spi.h \
+ ../Core/Inc/dapu_types.h ../Core/Inc/dapu_spi.h ../Core/Inc/main.h \
  ../Core/Inc/dapu_analog.h ../Core/Inc/dapu_boot.h ../Core/Inc/dapu_log.h \
  ../Core/Inc/dapu_console.h ../Core/Inc/bmp280.h ../Core/Inc/ms5611.h \
- ../Core/Inc/icm20948.h ../Core/Inc/main.h ../Core/Inc/spi.h \
+ ../Core/Inc/icm20948.h ../Core/Inc/spi.h ../Core/Inc/dapu_config.h \
  ../Core/Inc/gps_ubx.h ../Core/Inc/rpm_fft.h
 ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
@@ -114,6 +114,7 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
 ../Core/Inc/dapu_state.h:
 ../Core/Inc/dapu_types.h:
 ../Core/Inc/dapu_spi.h:
+../Core/Inc/main.h:
 ../Core/Inc/dapu_analog.h:
 ../Core/Inc/dapu_boot.h:
 ../Core/Inc/dapu_log.h:
@@ -121,7 +122,7 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
 ../Core/Inc/bmp280.h:
 ../Core/Inc/ms5611.h:
 ../Core/Inc/icm20948.h:
-../Core/Inc/main.h:
 ../Core/Inc/spi.h:
+../Core/Inc/dapu_config.h:
 ../Core/Inc/gps_ubx.h:
 ../Core/Inc/rpm_fft.h:

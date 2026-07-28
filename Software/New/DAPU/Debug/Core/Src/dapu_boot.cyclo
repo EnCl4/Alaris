@@ -1,6 +1,6 @@
-../Core/Inc/dapu_analog.h:26:21:analog_counts_to_volts	1
+../Core/Inc/dapu_analog.h:32:21:analog_counts_to_volts	1
 ../Core/Src/dapu_boot.c:22:6:dapu_boot_init_sensors	6
-../Core/Src/dapu_boot.c:87:6:dapu_boot_calibrate	14
-../Core/Src/dapu_boot.c:181:6:dapu_boot_run	1
-../Core/Src/dapu_boot.c:200:6:dapu_boot_complete	1
-../Core/Src/dapu_boot.c:205:6:dapu_boot_wait	2
+../Core/Src/dapu_boot.c:97:6:dapu_boot_calibrate	14
+../Core/Src/dapu_boot.c:191:6:dapu_boot_run	2
+../Core/Src/dapu_boot.c:224:6:dapu_boot_complete	1
+../Core/Src/dapu_boot.c:229:6:dapu_boot_wait	2
